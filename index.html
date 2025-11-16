@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Falling Balls</title>
+    <script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #111;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+
+  <body>
+    <script>
+      const { Engine, Render, Runner, World, Bodies } = Matter;
+
+      // world + physics
+      const engine = Engine.create();
+      const world = engine.world;
+
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+
+      // renderer
+      const render = Render.create({
+        element: document.body,
+        engine,
+        options: {
+          width,
+          height,
+          background: "#00FF00",
+          wireframes: false,
+        },
+      });
+
+      Render.run(render);
+      const runner = Runner.create();
+      Runner.run(runner, engine);
+
+      // static walls
+      const ground = Bodies.rectangle(width / 2, height + 50, width, 100, { isStatic: true });
+      const left = Bodies.rectangle(-50, height / 2, 100, height, { isStatic: true });
+      const right = Bodies.rectangle(width + 50, height / 2, 100, height, { isStatic: true });
+
+      World.add(world, [ground, left, right]);
+
+      // generate balls
+      function spawnBall() {
+        const x = Math.random() * width;
+        const r = 10 + Math.random() * 30;
+        const color = `hsl(${Math.random() * 360}, 80%, 60%)`;
+
+        const ball = Bodies.circle(x, -50, r, {
+          restitution: 0.6,  // 推薦 0.3~0.6
+          friction: 0,
+          render: {
+            fillStyle: color,
+          },
+        });
+
+        World.add(world, ball);
+      }
+
+      // drop a ball every 70ms
+      setInterval(spawnBall, 70);
+
+      // handle window resize
+      window.addEventListener("resize", () => {
+        location.reload(); // 簡單粗暴，保持一致
+      });
+    </script>
+  </body>
+</html>
