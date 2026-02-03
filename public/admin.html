@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Display - Ball Drop</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      overflow: hidden;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    #login-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    }
+    
+    #login-screen.hidden {
+      display: none;
+    }
+    
+    .login-box {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      text-align: center;
+    }
+    
+    .login-box h1 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+    
+    .login-box input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      font-size: 16px;
+      margin-bottom: 15px;
+    }
+    
+    .login-box button {
+      width: 100%;
+      padding: 12px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    
+    .login-box button:hover {
+      background: #5568d3;
+    }
+    
+    .error {
+      color: #e74c3c;
+      margin-top: 10px;
+    }
+    
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+    
+    #control-panel {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      min-width: 280px;
+      z-index: 1000;
+    }
+    
+    #control-panel h2 {
+      margin-bottom: 15px;
+      color: #333;
+      font-size: 18px;
+    }
+    
+    .control-group {
+      margin-bottom: 15px;
+    }
+    
+    .control-group label {
+      display: block;
+      margin-bottom: 5px;
+      color: #555;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .control-group input[type="range"] {
+      width: 100%;
+    }
+    
+    .control-group input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    
+    .control-group .value-display {
+      display: inline-block;
+      margin-left: 10px;
+      color: #667eea;
+      font-weight: bold;
+    }
+    
+    .control-group button {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-weight: 600;
+      margin-top: 5px;
+    }
+    
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #5568d3;
+    }
+    
+    .btn-success {
+      background: #27ae60;
+      color: white;
+    }
+    
+    .btn-success:hover {
+      background: #229954;
+    }
+    
+    .btn-danger {
+      background: #e74c3c;
+      color: white;
+    }
+    
+    .btn-danger:hover {
+      background: #c0392b;
+    }
+    
+    .btn-warning {
+      background: #f39c12;
+      color: white;
+    }
+    
+    .btn-warning:hover {
+      background: #e67e22;
+    }
+    
+    .btn-disabled {
+      background: #95a5a6;
+      cursor: not-allowed;
+    }
+    
+    .btn-active {
+      background: #e74c3c;
+    }
+    
+    #stats {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 15px 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      font-size: 14px;
+      color: #333;
+      z-index: 1000;
+    }
+    
+    #stats div {
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="login-screen">
+    <div class="login-box">
+      <h1>🔐 Admin Login</h1>
+      <input type="password" id="password-input" placeholder="Enter admin password" />
+      <button onclick="login()">Login</button>
+      <div id="login-error" class="error"></div>
+    </div>
+  </div>
+  
+  <div id="canvas-container"></div>
+  
+  <div id="stats">
+    <div><strong>Ball Count:</strong> <span id="ball-count">0</span></div>
+    <div><strong>Status:</strong> <span id="status">Ready</span></div>
+  </div>
+  
+  <div id="control-panel">
+    <h2>⚙️ Control Panel</h2>
+    
+    <div class="control-group">
+      <label>Gravity: <span class="value-display" id="gravity-value">1.0</span></label>
+      <input type="range" id="gravity" min="0" max="5" step="0.1" value="1" />
+    </div>
+    
+    <div class="control-group">
+      <label>Elasticity: <span class="value-display" id="elasticity-value">0.8</span></label>
+      <input type="range" id="elasticity" min="0" max="1" step="0.05" value="0.8" />
+    </div>
+    
+    <div class="control-group">
+      <label>Countdown Timer (seconds)</label>
+      <input type="number" id="countdown-seconds" min="1" max="3600" value="60" />
+      <button class="btn-primary" onclick="startCountdown()">Start Countdown</button>
+    </div>
+    
+    <div class="control-group">
+      <button id="toggle-dropping" class="btn-success" onclick="toggleDropping()">
+        Allow Ball Dropping
+      </button>
+    </div>
+    
+    <div class="control-group">
+      <button class="btn-danger" onclick="resetWorld()">Reset (Remove Floor)</button>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    
+    let engine, render, runner;
+    let ground, leftWall, rightWall;
+    let balls = [];
+    let isAuthenticated = false;
+    let isDropping = false;
+    let ballCount = 0;
+    
+    const { Engine, Render, Runner, Bodies, Composite, World, Events } = Matter;
+    
+    // Login functionality
+    function login() {
+      const password = document.getElementById('password-input').value;
+      socket.emit('admin:login', { password });
+    }
+    
+    document.getElementById('password-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') login();
+    });
+    
+    socket.on('admin:authenticated', (data) => {
+      if (data.success) {
+        isAuthenticated = true;
+        document.getElementById('login-screen').classList.add('hidden');
+        initPhysics();
+      } else {
+        document.getElementById('login-error').textContent = 'Invalid password';
+      }
+    });
+    
+    // Initialize Matter.js
+    function initPhysics() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      
+      engine = Engine.create();
+      engine.gravity.y = 1;
+      
+      render = Render.create({
+        element: document.getElementById('canvas-container'),
+        engine: engine,
+        options: {
+          width: width,
+          height: height,
+          wireframes: false,
+          background: 'transparent'
+        }
+      });
+      
+      // Create boundaries
+      ground = Bodies.rectangle(width / 2, height - 10, width, 20, {
+        isStatic: true,
+        render: { fillStyle: '#34495e' }
+      });
+      
+      leftWall = Bodies.rectangle(10, height / 2, 20, height, {
+        isStatic: true,
+        render: { fillStyle: '#34495e' }
+      });
+      
+      rightWall = Bodies.rectangle(width - 10, height / 2, 20, height, {
+        isStatic: true,
+        render: { fillStyle: '#34495e' }
+      });
+      
+      Composite.add(engine.world, [ground, leftWall, rightWall]);
+      
+      Render.run(render);
+      runner = Runner.create();
+      Runner.run(runner, engine);
+      
+      updateBallCount();
+    }
+    
+    // Physics controls
+    document.getElementById('gravity').addEventListener('input', (e) => {
+      const value = parseFloat(e.target.value);
+      document.getElementById('gravity-value').textContent = value.toFixed(1);
+      engine.gravity.y = value;
+      socket.emit('admin:updatePhysics', { gravity: value });
+    });
+    
+    document.getElementById('elasticity').addEventListener('input', (e) => {
+      const value = parseFloat(e.target.value);
+      document.getElementById('elasticity-value').textContent = value.toFixed(2);
+      balls.forEach(ball => {
+        ball.restitution = value;
+      });
+      socket.emit('admin:updatePhysics', { elasticity: value });
+    });
+    
+    function toggleDropping() {
+      isDropping = !isDropping;
+      const btn = document.getElementById('toggle-dropping');
+      
+      if (isDropping) {
+        btn.textContent = 'Stop Ball Dropping';
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-active');
+        document.getElementById('status').textContent = 'Dropping Enabled';
+      } else {
+        btn.textContent = 'Allow Ball Dropping';
+        btn.classList.remove('btn-active');
+        btn.classList.add('btn-success');
+        document.getElementById('status').textContent = 'Dropping Disabled';
+      }
+      
+      socket.emit('admin:toggleDropping', { dropping: isDropping });
+    }
+    
+    function startCountdown() {
+      const seconds = parseInt(document.getElementById('countdown-seconds').value);
+      if (seconds > 0 && seconds <= 3600) {
+        socket.emit('admin:startCountdown', { seconds });
+        document.getElementById('status').textContent = `Countdown: ${seconds}s`;
+      }
+    }
+    
+    function resetWorld() {
+      if (confirm('This will remove the floor and all balls will fall. Continue?')) {
+        socket.emit('admin:reset');
+        // Remove ground
+        Composite.remove(engine.world, ground);
+        
+        // Remove all balls after they fall
+        setTimeout(() => {
+          balls.forEach(ball => {
+            Composite.remove(engine.world, ball);
+          });
+          balls = [];
+          updateBallCount();
+          
+          // Re-add ground
+          ground = Bodies.rectangle(window.innerWidth / 2, window.innerHeight - 10, window.innerWidth, 20, {
+            isStatic: true,
+            render: { fillStyle: '#34495e' }
+          });
+          Composite.add(engine.world, ground);
+        }, 3000);
+      }
+    }
+    
+    function updateBallCount() {
+      ballCount = balls.length;
+      document.getElementById('ball-count').textContent = ballCount;
+    }
+    
+    // Socket events
+    socket.on('ball:add', (data) => {
+      if (!isAuthenticated) return;
+      
+      const x = Math.random() * (window.innerWidth - 200) + 100;
+      const y = -50;
+      const radius = 40;
+      
+      const elasticity = parseFloat(document.getElementById('elasticity').value);
+      
+      const ball = Bodies.circle(x, y, radius, {
+        restitution: elasticity,
+        friction: 0.001,
+        density: 0.001,
+        render: {
+          fillStyle: data.color,
+          strokeStyle: '#fff',
+          lineWidth: 3,
+          sprite: {
+            texture: data.gravatarUrl,
+            xScale: radius * 2 / 80,
+            yScale: radius * 2 / 80
+          }
+        }
+      });
+      
+      Composite.add(engine.world, ball);
+      balls.push(ball);
+      updateBallCount();
+    });
+    
+    socket.on('physics:update', (settings) => {
+      if (settings.gravity !== undefined) {
+        engine.gravity.y = settings.gravity;
+        document.getElementById('gravity').value = settings.gravity;
+        document.getElementById('gravity-value').textContent = settings.gravity.toFixed(1);
+      }
+      
+      if (settings.elasticity !== undefined) {
+        document.getElementById('elasticity').value = settings.elasticity;
+        document.getElementById('elasticity-value').textContent = settings.elasticity.toFixed(2);
+      }
+    });
+    
+    socket.on('dropping:changed', (data) => {
+      isDropping = data.dropping;
+      const btn = document.getElementById('toggle-dropping');
+      
+      if (isDropping) {
+        btn.textContent = 'Stop Ball Dropping';
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-active');
+        document.getElementById('status').textContent = 'Dropping Enabled';
+      } else {
+        btn.textContent = 'Allow Ball Dropping';
+        btn.classList.remove('btn-active');
+        btn.classList.add('btn-success');
+        document.getElementById('status').textContent = 'Dropping Disabled';
+      }
+    });
+    
+    socket.on('countdown:start', (data) => {
+      let remaining = data.seconds;
+      document.getElementById('status').textContent = `Countdown: ${remaining}s`;
+      
+      const interval = setInterval(() => {
+        remaining--;
+        if (remaining <= 0) {
+          clearInterval(interval);
+          document.getElementById('status').textContent = 'Countdown Ended';
+        } else {
+          document.getElementById('status').textContent = `Countdown: ${remaining}s`;
+        }
+      }, 1000);
+    });
+    
+    socket.on('countdown:end', () => {
+      document.getElementById('status').textContent = 'Countdown Ended';
+    });
+    
+    socket.on('world:reset', () => {
+      // This is handled locally in resetWorld function
+    });
+    
+    // Window resize
+    window.addEventListener('resize', () => {
+      if (render) {
+        render.canvas.width = window.innerWidth;
+        render.canvas.height = window.innerHeight;
+        render.options.width = window.innerWidth;
+        render.options.height = window.innerHeight;
+      }
+    });
+  </script>
+</body>
+</html>
