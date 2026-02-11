@@ -1,700 +1,709 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant-TW">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Display - Ball Drop</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
-  <script src="/socket.io/socket.io.js"></script>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      overflow: hidden;
-      background: #00ff00;
-      transition: background 0.3s;
-    }
-    
-    body.transparent {
-      background: transparent;
-    }
-    
-    #login-screen {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.9);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 10000;
-    }
-    
-    #login-screen.hidden {
-      display: none;
-    }
-    
-    .login-box {
-      background: white;
-      padding: 40px;
-      border-radius: 12px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-      text-align: center;
-    }
-    
-    .login-box h1 {
-      margin-bottom: 20px;
-      color: #333;
-    }
-    
-    .login-box input {
-      width: 100%;
-      padding: 12px;
-      border: 2px solid #ddd;
-      border-radius: 6px;
-      font-size: 16px;
-      margin-bottom: 15px;
-    }
-    
-    .login-box button {
-      width: 100%;
-      padding: 12px;
-      background: #667eea;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 16px;
-      cursor: pointer;
-      transition: background 0.3s;
-    }
-    
-    .login-box button:hover {
-      background: #5568d3;
-    }
-    
-    .error {
-      color: #e74c3c;
-      margin-top: 10px;
-    }
-    
-    #canvas-container {
-      width: 100vw;
-      height: 100vh;
-      position: relative;
-    }
-    
-    #control-panel {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: rgba(255, 255, 255, 0.95);
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-      min-width: 280px;
-      z-index: 1000;
-    }
-    
-    #control-panel h2 {
-      margin-bottom: 15px;
-      color: #333;
-      font-size: 18px;
-    }
-    
-    .control-group {
-      margin-bottom: 15px;
-    }
-    
-    .control-group label {
-      display: block;
-      margin-bottom: 5px;
-      color: #555;
-      font-size: 14px;
-      font-weight: 500;
-    }
-    
-    .control-group input[type="range"] {
-      width: 100%;
-    }
-    
-    .control-group input[type="number"] {
-      width: 100%;
-      padding: 8px;
-      border: 2px solid #ddd;
-      border-radius: 6px;
-      font-size: 14px;
-    }
-    
-    .control-group .value-display {
-      display: inline-block;
-      margin-left: 10px;
-      color: #667eea;
-      font-weight: bold;
-    }
-    
-    .control-group button {
-      width: 100%;
-      padding: 10px;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: all 0.3s;
-      font-weight: 600;
-      margin-top: 5px;
-    }
-    
-    .btn-primary {
-      background: #667eea;
-      color: white;
-    }
-    
-    .btn-primary:hover {
-      background: #5568d3;
-    }
-    
-    .btn-success {
-      background: #27ae60;
-      color: white;
-    }
-    
-    .btn-success:hover {
-      background: #229954;
-    }
-    
-    .btn-danger {
-      background: #e74c3c;
-      color: white;
-    }
-    
-    .btn-danger:hover {
-      background: #c0392b;
-    }
-    
-    .btn-warning {
-      background: #f39c12;
-      color: white;
-    }
-    
-    .btn-warning:hover {
-      background: #e67e22;
-    }
-    
-    .btn-disabled {
-      background: #95a5a6;
-      cursor: not-allowed;
-    }
-    
-    .btn-active {
-      background: #e74c3c;
-    }
-    
-    #stats {
-      position: fixed;
-      top: 20px;
-      left: 20px;
-      background: rgba(255, 255, 255, 0.95);
-      padding: 15px 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-      font-size: 14px;
-      color: #333;
-      z-index: 1000;
-    }
-    
-    #stats div {
-      margin: 5px 0;
-    }
-    
-    .hidden-ui #control-panel,
-    .hidden-ui #stats {
-      display: none !important;
-    }
-    
-    .control-group input[type="checkbox"] {
-      width: auto;
-      margin-right: 8px;
-    }
-    
-    .control-group .checkbox-label {
-      display: flex;
-      align-items: center;
-      cursor: pointer;
-    }
-  </style>
-</head>
-<body>
-  <div id="login-screen">
-    <div class="login-box">
-      <h1>管理員密碼</h1>
-      <input type="password" id="password-input" placeholder="Enter admin password" />
-      <button onclick="login()">Login</button>
-      <div id="login-error" class="error"></div>
-    </div>
-  </div>
-  
-  <div id="canvas-container"></div>
-  
-  <div id="stats">
-    <div><strong>Ball Count:</strong> <span id="ball-count">0</span> / <span id="target-count">0</span></div>
-    <div><strong>Status:</strong> <span id="status">Ready</span></div>
-  </div>
-  
-  <div id="control-panel">
-    <h2>⚙️ Control Panel</h2>
-    
-    <div class="control-group">
-      <label>Gravity: <span class="value-display" id="gravity-value">1.0</span></label>
-      <input type="range" id="gravity" min="0" max="5" step="0.1" value="1" />
-    </div>
-    
-    <div class="control-group">
-      <label>Elasticity: <span class="value-display" id="elasticity-value">0.8</span></label>
-      <input type="range" id="elasticity" min="0" max="1" step="0.05" value="0.8" />
-    </div>
-    
-    <div class="control-group">
-      <label>Ball Size: <span class="value-display" id="ball-size-value">40</span>px</label>
-      <input type="range" id="ball-size" min="20" max="100" step="5" value="40" />
-    </div>
-    
-    <div class="control-group">
-      <label>Countdown Timer (seconds)</label>
-      <input type="number" id="countdown-seconds" min="1" max="3600" value="60" />
-      <button class="btn-primary" onclick="startCountdown()">Start Countdown</button>
-    </div>
-    
-    <div class="control-group">
-      <button id="toggle-dropping" class="btn-success" onclick="toggleDropping()">
-        Allow Ball Dropping
-      </button>
-    </div>
-    
-    <div class="control-group">
-      <button class="btn-danger" onclick="resetWorld()">Reset (Remove Floor)</button>
-    </div>
-    
-    <div class="control-group">
-      <label class="checkbox-label">
-        <input type="checkbox" id="transparent-bg" onchange="toggleBackground()" />
-        Transparent Background
-      </label>
-    </div>
-    
-    <div class="control-group">
-      <button class="btn-warning" onclick="toggleUI()">Toggle UI (H)</button>
-    </div>
-    
-    <div class="control-group">
-      <label>Auto-fill after countdown ends (seconds)</label>
-      <input type="number" id="autofill-seconds" min="0" max="60" value="5" />
-    </div>
-    
-    <div class="control-group">
-      <button class="btn-primary" onclick="forceAutoFill()">Force Fill Now</button>
-    </div>
-  </div>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Admin Display - Ball Drop</title>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+		<script src="/socket.io/socket.io.js"></script>
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
 
-  <script>
-    const socket = io();
-    
-    let engine, render, runner;
-    let ground, leftWall, rightWall;
-    let balls = [];
-    let isAuthenticated = false;
-    let isDropping = false;
-    let ballCount = 0;
-    let ballSize = 40; // Default ball size
-    
-    const { Engine, Render, Runner, Bodies, Composite, World, Events } = Matter;
-    
-    // Login functionality
-    function login() {
-      const password = document.getElementById('password-input').value;
-      socket.emit('admin:login', { password });
-    }
-    
-    document.getElementById('password-input').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') login();
-    });
-    
-    socket.on('admin:authenticated', (data) => {
-      if (data.success) {
-        isAuthenticated = true;
-        document.getElementById('login-screen').classList.add('hidden');
-        initPhysics();
-      } else {
-        document.getElementById('login-error').textContent = 'Invalid password';
-      }
-    });
-    
-    // Initialize Matter.js
-    function initPhysics() {
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      
-      engine = Engine.create();
-      engine.gravity.y = 1;
-      
-      render = Render.create({
-        element: document.getElementById('canvas-container'),
-        engine: engine,
-        options: {
-          width: width,
-          height: height,
-          wireframes: false,
-          background: 'transparent'
-        }
-      });
-      
-      // Create boundaries
-      ground = Bodies.rectangle(width / 2, height - 10, width, 20, {
-        isStatic: true,
-        render: { fillStyle: 'transparent' }
-      });
-      
-      leftWall = Bodies.rectangle(10, height / 2, 20, height, {
-        isStatic: true,
-        render: { fillStyle: 'transparent' }
-      });
-      
-      rightWall = Bodies.rectangle(width - 10, height / 2, 20, height, {
-        isStatic: true,
-        render: { fillStyle: 'transparent' }
-      });
-      
-      Composite.add(engine.world, [ground, leftWall, rightWall]);
-      
-      Render.run(render);
-      runner = Runner.create();
-      Runner.run(runner, engine);
-      
-      updateBallCount();
-      updateTargetCount();
-    }
-    
-    // Physics controls
-    document.getElementById('gravity').addEventListener('input', (e) => {
-      const value = parseFloat(e.target.value);
-      document.getElementById('gravity-value').textContent = value.toFixed(1);
-      engine.gravity.y = value;
-      socket.emit('admin:updatePhysics', { gravity: value });
-    });
-    
-    document.getElementById('elasticity').addEventListener('input', (e) => {
-      const value = parseFloat(e.target.value);
-      document.getElementById('elasticity-value').textContent = value.toFixed(2);
-      balls.forEach(ball => {
-        ball.restitution = value;
-      });
-      socket.emit('admin:updatePhysics', { elasticity: value });
-    });
-    
-    document.getElementById('ball-size').addEventListener('input', (e) => {
-      ballSize = parseInt(e.target.value);
-      document.getElementById('ball-size-value').textContent = ballSize;
-      updateTargetCount();
-    });
-    
-    function toggleDropping() {
-      isDropping = !isDropping;
-      const btn = document.getElementById('toggle-dropping');
-      
-      if (isDropping) {
-        btn.textContent = 'Stop Ball Dropping';
-        btn.classList.remove('btn-success');
-        btn.classList.add('btn-active');
-        document.getElementById('status').textContent = 'Dropping Enabled';
-      } else {
-        btn.textContent = 'Allow Ball Dropping';
-        btn.classList.remove('btn-active');
-        btn.classList.add('btn-success');
-        document.getElementById('status').textContent = 'Dropping Disabled';
-      }
-      
-      socket.emit('admin:toggleDropping', { dropping: isDropping });
-    }
-    
-    function startCountdown() {
-      const seconds = parseInt(document.getElementById('countdown-seconds').value);
-      if (seconds > 0 && seconds <= 3600) {
-        socket.emit('admin:startCountdown', { seconds });
-        document.getElementById('status').textContent = `Countdown: ${seconds}s`;
-      }
-    }
-    
-    function resetWorld() {
-      if (confirm('This will remove the floor and all balls will fall. Continue?')) {
-        socket.emit('admin:reset');
-        // Remove ground
-        Composite.remove(engine.world, ground);
-        
-        // Remove all balls after they fall
-        setTimeout(() => {
-          balls.forEach(ball => {
-            Composite.remove(engine.world, ball);
-          });
-          balls = [];
-          updateBallCount();
-          
-          // Re-add ground
-          ground = Bodies.rectangle(window.innerWidth / 2, window.innerHeight - 10, window.innerWidth, 20, {
-            isStatic: true,
-            render: { fillStyle: 'transparent' }
-          });
-          Composite.add(engine.world, ground);
-        }, 3000);
-      }
-    }
-    
-    function updateBallCount() {
-      ballCount = balls.length;
-      document.getElementById('ball-count').textContent = ballCount;
-      updateTargetCount();
-    }
-    
-    // Update target count based on screen size and ball size
-    function updateTargetCount() {
-      const { radius, count } = calculateBallParams();
-      document.getElementById('target-count').textContent = count;
-    }
-    
-    // Socket events
-    socket.on('ball:add', (data) => {
-      if (!isAuthenticated) return;
-      
-      const x = Math.random() * (window.innerWidth - 200) + 100;
-      const y = -50;
-      const radius = ballSize; // Use current ball size setting
-      
-      const elasticity = parseFloat(document.getElementById('elasticity').value);
-      
-      const ball = Bodies.circle(x, y, radius, {
-        restitution: elasticity,
-        friction: 0.001,
-        density: 0.001,
-        render: {
-          fillStyle: data.color,
-          strokeStyle: '#fff',
-          lineWidth: 3
-        }
-      });
-      
-      Composite.add(engine.world, ball);
-      balls.push(ball);
-      updateBallCount();
-    });
-    
-    socket.on('physics:update', (settings) => {
-      if (settings.gravity !== undefined) {
-        engine.gravity.y = settings.gravity;
-        document.getElementById('gravity').value = settings.gravity;
-        document.getElementById('gravity-value').textContent = settings.gravity.toFixed(1);
-      }
-      
-      if (settings.elasticity !== undefined) {
-        document.getElementById('elasticity').value = settings.elasticity;
-        document.getElementById('elasticity-value').textContent = settings.elasticity.toFixed(2);
-      }
-    });
-    
-    socket.on('dropping:changed', (data) => {
-      isDropping = data.dropping;
-      const btn = document.getElementById('toggle-dropping');
-      
-      if (isDropping) {
-        btn.textContent = 'Stop Ball Dropping';
-        btn.classList.remove('btn-success');
-        btn.classList.add('btn-active');
-        document.getElementById('status').textContent = 'Dropping Enabled';
-      } else {
-        btn.textContent = 'Allow Ball Dropping';
-        btn.classList.remove('btn-active');
-        btn.classList.add('btn-success');
-        document.getElementById('status').textContent = 'Dropping Disabled';
-      }
-    });
-    
-    socket.on('countdown:start', (data) => {
-      let remaining = data.seconds;
-      document.getElementById('status').textContent = `Countdown: ${remaining}s`;
-      
-      const interval = setInterval(() => {
-        remaining--;
-        if (remaining <= 0) {
-          clearInterval(interval);
-          document.getElementById('status').textContent = 'Countdown Ended';
-        } else {
-          document.getElementById('status').textContent = `Countdown: ${remaining}s`;
-        }
-      }, 1000);
-    });
-    
-    socket.on('countdown:end', () => {
-      document.getElementById('status').textContent = 'Countdown Ended';
-      
-      // Auto-fill after countdown ends
-      const autoFillDelay = parseInt(document.getElementById('autofill-seconds').value);
-      if (autoFillDelay >= 0) {
-        if (autoFillDelay === 0) {
-          performAutoFill();
-        } else {
-          document.getElementById('status').textContent = `Auto-fill in ${autoFillDelay}s...`;
-          setTimeout(() => {
-            performAutoFill();
-          }, autoFillDelay * 1000);
-        }
-      }
-    });
-    
-    socket.on('world:reset', () => {
-      // This is handled locally in resetWorld function
-    });
-    
-    // Toggle background
-    function toggleBackground() {
-      const isTransparent = document.getElementById('transparent-bg').checked;
-      if (isTransparent) {
-        document.body.classList.add('transparent');
-      } else {
-        document.body.classList.remove('transparent');
-      }
-    }
-    
-    // Toggle UI visibility
-    function toggleUI() {
-      document.body.classList.toggle('hidden-ui');
-    }
-    
-    // Keyboard shortcut for toggling UI
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'h' || e.key === 'H') {
-        toggleUI();
-      }
-    });
-    
-    // Auto-fill with random balls
-    const autofillColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#F7DC6F', '#BB8FCE', '#58D68D', '#F8B739', '#EC7063'];
-    let autofillInterval = null;
-    
-    // Calculate optimal ball size and count based on screen size
-    function calculateBallParams() {
-      const screenArea = window.innerWidth * window.innerHeight;
-      const radius = ballSize; // Use the slider value
-      const ballArea = Math.PI * radius * radius;
-      // Calculate how many balls needed to fill 75% of screen (accounting for packing efficiency ~60%)
-      const targetFillRatio = 0.75;
-      const packingEfficiency = 0.60;
-      const totalBalls = Math.floor((screenArea * targetFillRatio) / (ballArea / packingEfficiency));
-      
-      return { radius: radius, count: Math.max(50, Math.min(500, totalBalls)) };
-    }
-    
-    // Perform the auto-fill
-    function performAutoFill() {
-      // Clear any existing interval
-      if (autofillInterval) {
-        clearInterval(autofillInterval);
-      }
-      
-      const { radius, count: targetCount } = calculateBallParams();
-      const currentCount = balls.length;
-      const ballsToAdd = Math.max(0, targetCount - currentCount);
-      
-      if (ballsToAdd === 0) {
-        document.getElementById('status').textContent = 'Already filled!';
-        return;
-      }
-      
-      document.getElementById('status').textContent = `Auto-filling ${ballsToAdd} balls...`;
-      
-      const interval = 2000 / ballsToAdd; // Spread over 2 seconds (faster)
-      let added = 0;
-      
-      autofillInterval = setInterval(() => {
-        if (added >= ballsToAdd) {
-          clearInterval(autofillInterval);
-          autofillInterval = null;
-          document.getElementById('status').textContent = 'Auto-fill Complete';
-          return;
-        }
-        
-        // Create random ball with pure color (no Gravatar)
-        const x = Math.random() * (window.innerWidth - radius * 4) + radius * 2;
-        const y = -50;
-        const color = autofillColors[Math.floor(Math.random() * autofillColors.length)];
-        const elasticity = parseFloat(document.getElementById('elasticity').value);
-        
-        const ball = Bodies.circle(x, y, radius, {
-          restitution: elasticity,
-          friction: 0.001,
-          density: 0.001,
-          render: {
-            fillStyle: color,
-            strokeStyle: '#fff',
-            lineWidth: 3
-          }
-        });
-        
-        Composite.add(engine.world, ball);
-        balls.push(ball);
-        updateBallCount();
-        added++;
-      }, interval);
-    }
-    
-    // Force auto-fill immediately
-    function forceAutoFill() {
-      performAutoFill();
-    }
-    
-    // Window resize with boundary adjustment
-    window.addEventListener('resize', () => {
-      if (render && engine) {
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-        
-        // Update canvas size
-        render.canvas.width = width;
-        render.canvas.height = height;
-        render.options.width = width;
-        render.options.height = height;
-        
-        // Remove old boundaries
-        Composite.remove(engine.world, ground);
-        Composite.remove(engine.world, leftWall);
-        Composite.remove(engine.world, rightWall);
-        
-        // Create new boundaries with updated size
-        ground = Bodies.rectangle(width / 2, height - 10, width, 20, {
-          isStatic: true,
-          render: { fillStyle: 'transparent' }
-        });
-        
-        leftWall = Bodies.rectangle(10, height / 2, 20, height, {
-          isStatic: true,
-          render: { fillStyle: 'transparent' }
-        });
-        
-        rightWall = Bodies.rectangle(width - 10, height / 2, 20, height, {
-          isStatic: true,
-          render: { fillStyle: 'transparent' }
-        });
-        
-        // Add new boundaries
-        Composite.add(engine.world, [ground, leftWall, rightWall]);
-        
-        // Update target count when window resizes
-        updateTargetCount();
-      }
-    });
-  </script>
-</body>
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+				overflow: hidden;
+				background: #00ff00;
+				transition: background 0.3s;
+			}
+
+			body.transparent {
+				background: transparent;
+			}
+
+			#login-screen {
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100vw;
+				height: 100vh;
+				background: rgba(0, 0, 0, 0.9);
+				display: flex;
+				justify-content: center;
+				align-items: center;
+				z-index: 10000;
+			}
+
+			#login-screen.hidden {
+				display: none;
+			}
+
+			.login-box {
+				background: white;
+				padding: 40px;
+				border-radius: 12px;
+				box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+				text-align: center;
+			}
+
+			.login-box h1 {
+				margin-bottom: 20px;
+				color: #333;
+			}
+
+			.login-box input {
+				width: 100%;
+				padding: 12px;
+				border: 2px solid #ddd;
+				border-radius: 6px;
+				font-size: 16px;
+				margin-bottom: 15px;
+			}
+
+			.login-box button {
+				width: 100%;
+				padding: 12px;
+				background: #667eea;
+				color: white;
+				border: none;
+				border-radius: 6px;
+				font-size: 16px;
+				cursor: pointer;
+				transition: background 0.3s;
+			}
+
+			.login-box button:hover {
+				background: #5568d3;
+			}
+
+			.error {
+				color: #e74c3c;
+				margin-top: 10px;
+			}
+
+			#canvas-container {
+				width: 100vw;
+				height: 100vh;
+				position: relative;
+			}
+
+			#control-panel {
+				position: fixed;
+				top: 20px;
+				right: 20px;
+				background: rgba(255, 255, 255, 0.95);
+				padding: 20px;
+				border-radius: 12px;
+				box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+				min-width: 280px;
+				z-index: 1000;
+			}
+
+			#control-panel h2 {
+				margin-bottom: 15px;
+				color: #333;
+				font-size: 18px;
+			}
+
+			.control-group {
+				margin-bottom: 15px;
+			}
+
+			.control-group label {
+				display: block;
+				margin-bottom: 5px;
+				color: #555;
+				font-size: 14px;
+				font-weight: 500;
+			}
+
+			.control-group input[type="range"] {
+				width: 100%;
+			}
+
+			.control-group input[type="number"] {
+				width: 100%;
+				padding: 8px;
+				border: 2px solid #ddd;
+				border-radius: 6px;
+				font-size: 14px;
+			}
+
+			.control-group .value-display {
+				display: inline-block;
+				margin-left: 10px;
+				color: #667eea;
+				font-weight: bold;
+			}
+
+			.control-group button {
+				width: 100%;
+				padding: 10px;
+				border: none;
+				border-radius: 6px;
+				font-size: 14px;
+				cursor: pointer;
+				transition: all 0.3s;
+				font-weight: 600;
+				margin-top: 5px;
+			}
+
+			.btn-primary {
+				background: #667eea;
+				color: white;
+			}
+
+			.btn-primary:hover {
+				background: #5568d3;
+			}
+
+			.btn-success {
+				background: #27ae60;
+				color: white;
+			}
+
+			.btn-success:hover {
+				background: #229954;
+			}
+
+			.btn-danger {
+				background: #e74c3c;
+				color: white;
+			}
+
+			.btn-danger:hover {
+				background: #c0392b;
+			}
+
+			.btn-warning {
+				background: #f39c12;
+				color: white;
+			}
+
+			.btn-warning:hover {
+				background: #e67e22;
+			}
+
+			.btn-disabled {
+				background: #95a5a6;
+				cursor: not-allowed;
+			}
+
+			.btn-active {
+				background: #e74c3c;
+			}
+
+			#stats {
+				position: fixed;
+				top: 20px;
+				left: 20px;
+				background: rgba(255, 255, 255, 0.95);
+				padding: 15px 20px;
+				border-radius: 12px;
+				box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+				font-size: 14px;
+				color: #333;
+				z-index: 1000;
+			}
+
+			#stats div {
+				margin: 5px 0;
+			}
+
+			.hidden-ui #control-panel,
+			.hidden-ui #stats {
+				display: none !important;
+			}
+
+			.control-group input[type="checkbox"] {
+				width: auto;
+				margin-right: 8px;
+			}
+
+			.control-group .checkbox-label {
+				display: flex;
+				align-items: center;
+				cursor: pointer;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="login-screen">
+			<div class="login-box">
+				<h1>管理員密碼</h1>
+				<input type="password" id="password-input" placeholder="Enter admin password" />
+				<button onclick="login()">Login</button>
+				<div id="login-error" class="error"></div>
+			</div>
+		</div>
+
+		<div id="canvas-container"></div>
+
+		<div id="stats">
+			<div>
+				<strong>Ball Count:</strong>
+				<span id="ball-count">0</span>
+				/
+				<span id="target-count">0</span>
+			</div>
+			<div>
+				<strong>Status:</strong>
+				<span id="status">Ready</span>
+			</div>
+		</div>
+
+		<div id="control-panel">
+			<h2>⚙️ Control Panel</h2>
+
+			<div class="control-group">
+				<label>
+					Gravity:
+					<span class="value-display" id="gravity-value">1.0</span>
+				</label>
+				<input type="range" id="gravity" min="0" max="5" step="0.1" value="1" />
+			</div>
+
+			<div class="control-group">
+				<label>
+					Elasticity:
+					<span class="value-display" id="elasticity-value">0.8</span>
+				</label>
+				<input type="range" id="elasticity" min="0" max="1" step="0.05" value="0.8" />
+			</div>
+
+			<div class="control-group">
+				<label>
+					Ball Size:
+					<span class="value-display" id="ball-size-value">40</span>
+					px
+				</label>
+				<input type="range" id="ball-size" min="20" max="100" step="5" value="40" />
+			</div>
+
+			<div class="control-group">
+				<label>Countdown Timer (seconds)</label>
+				<input type="number" id="countdown-seconds" min="1" max="3600" value="60" />
+				<button class="btn-primary" onclick="startCountdown()">Start Countdown</button>
+			</div>
+
+			<div class="control-group">
+				<button id="toggle-dropping" class="btn-success" onclick="toggleDropping()">Allow Ball Dropping</button>
+			</div>
+
+			<div class="control-group">
+				<button class="btn-danger" onclick="resetWorld()">Reset (Remove Floor)</button>
+			</div>
+
+			<div class="control-group">
+				<label class="checkbox-label">
+					<input type="checkbox" id="transparent-bg" onchange="toggleBackground()" />
+					Transparent Background
+				</label>
+			</div>
+
+			<div class="control-group">
+				<button class="btn-warning" onclick="toggleUI()">Toggle UI (H)</button>
+			</div>
+
+			<div class="control-group">
+				<label>Auto-fill after countdown ends (seconds)</label>
+				<input type="number" id="autofill-seconds" min="0" max="60" value="5" />
+			</div>
+
+			<div class="control-group">
+				<button class="btn-primary" onclick="forceAutoFill()">Force Fill Now</button>
+			</div>
+		</div>
+
+		<script>
+			const socket = io();
+
+			let engine, render, runner;
+			let ground, leftWall, rightWall;
+			let balls = [];
+			let isAuthenticated = false;
+			let isDropping = false;
+			let ballCount = 0;
+			let ballSize = 40; // Default ball size
+
+			const { Engine, Render, Runner, Bodies, Composite, World, Events } = Matter;
+
+			// Login functionality
+			function login() {
+				const password = document.getElementById("password-input").value;
+				socket.emit("admin:login", { password });
+			}
+
+			document.getElementById("password-input").addEventListener("keypress", e => {
+				if (e.key === "Enter") login();
+			});
+
+			socket.on("admin:authenticated", data => {
+				if (data.success) {
+					isAuthenticated = true;
+					document.getElementById("login-screen").classList.add("hidden");
+					initPhysics();
+				} else {
+					document.getElementById("login-error").textContent = "Invalid password";
+				}
+			});
+
+			// Initialize Matter.js
+			function initPhysics() {
+				const width = window.innerWidth;
+				const height = window.innerHeight;
+
+				engine = Engine.create();
+				engine.gravity.y = 1;
+
+				render = Render.create({
+					element: document.getElementById("canvas-container"),
+					engine: engine,
+					options: {
+						width: width,
+						height: height,
+						wireframes: false,
+						background: "transparent"
+					}
+				});
+
+// Create boundaries (outside visible area)
+			ground = Bodies.rectangle(width / 2, height + 10, width, 20, {
+				isStatic: true,
+				render: { fillStyle: "transparent" }
+			});
+
+			leftWall = Bodies.rectangle(-10, height / 2, 20, height, {
+				isStatic: true,
+				render: { fillStyle: "transparent" }
+			});
+
+			rightWall = Bodies.rectangle(width + 10, height / 2, 20, height, {
+					isStatic: true,
+					render: { fillStyle: "transparent" }
+				});
+
+				Composite.add(engine.world, [ground, leftWall, rightWall]);
+
+				Render.run(render);
+				runner = Runner.create();
+				Runner.run(runner, engine);
+
+				updateBallCount();
+				updateTargetCount();
+			}
+
+			// Physics controls
+			document.getElementById("gravity").addEventListener("input", e => {
+				const value = parseFloat(e.target.value);
+				document.getElementById("gravity-value").textContent = value.toFixed(1);
+				engine.gravity.y = value;
+				socket.emit("admin:updatePhysics", { gravity: value });
+			});
+
+			document.getElementById("elasticity").addEventListener("input", e => {
+				const value = parseFloat(e.target.value);
+				document.getElementById("elasticity-value").textContent = value.toFixed(2);
+				balls.forEach(ball => {
+					ball.restitution = value;
+				});
+				socket.emit("admin:updatePhysics", { elasticity: value });
+			});
+
+			document.getElementById("ball-size").addEventListener("input", e => {
+				ballSize = parseInt(e.target.value);
+				document.getElementById("ball-size-value").textContent = ballSize;
+				updateTargetCount();
+			});
+
+			function toggleDropping() {
+				isDropping = !isDropping;
+				const btn = document.getElementById("toggle-dropping");
+
+				if (isDropping) {
+					btn.textContent = "Stop Ball Dropping";
+					btn.classList.remove("btn-success");
+					btn.classList.add("btn-active");
+					document.getElementById("status").textContent = "Dropping Enabled";
+				} else {
+					btn.textContent = "Allow Ball Dropping";
+					btn.classList.remove("btn-active");
+					btn.classList.add("btn-success");
+					document.getElementById("status").textContent = "Dropping Disabled";
+				}
+
+				socket.emit("admin:toggleDropping", { dropping: isDropping });
+			}
+
+			function startCountdown() {
+				const seconds = parseInt(document.getElementById("countdown-seconds").value);
+				if (seconds > 0 && seconds <= 3600) {
+					socket.emit("admin:startCountdown", { seconds });
+					document.getElementById("status").textContent = `Countdown: ${seconds}s`;
+				}
+			}
+
+			function resetWorld() {
+				if (confirm("This will remove the floor and all balls will fall. Continue?")) {
+					socket.emit("admin:reset");
+					// Remove ground
+					Composite.remove(engine.world, ground);
+
+					// Remove all balls after they fall
+					setTimeout(() => {
+						balls.forEach(ball => {
+							Composite.remove(engine.world, ball);
+						});
+						balls = [];
+						updateBallCount();
+
+						// Re-add ground
+					ground = Bodies.rectangle(window.innerWidth / 2, window.innerHeight + 10, window.innerWidth, 20, {
+							isStatic: true,
+							render: { fillStyle: "transparent" }
+						});
+						Composite.add(engine.world, ground);
+					}, 3000);
+				}
+			}
+
+			function updateBallCount() {
+				ballCount = balls.length;
+				document.getElementById("ball-count").textContent = ballCount;
+				updateTargetCount();
+			}
+
+			// Update target count based on screen size and ball size
+			function updateTargetCount() {
+				const { radius, count } = calculateBallParams();
+				document.getElementById("target-count").textContent = count;
+			}
+
+			// Socket events
+			socket.on("ball:add", data => {
+				if (!isAuthenticated) return;
+
+				const x = Math.random() * (window.innerWidth - 200) + 100;
+				const y = -50;
+				const radius = ballSize; // Use current ball size setting
+
+				const elasticity = parseFloat(document.getElementById("elasticity").value);
+
+				const ball = Bodies.circle(x, y, radius, {
+					restitution: elasticity,
+					friction: 0.001,
+					density: 0.001,
+					render: {
+						fillStyle: data.color,
+						strokeStyle: "#fff",
+						lineWidth: 3
+					}
+				});
+
+				Composite.add(engine.world, ball);
+				balls.push(ball);
+				updateBallCount();
+			});
+
+			socket.on("physics:update", settings => {
+				if (settings.gravity !== undefined) {
+					engine.gravity.y = settings.gravity;
+					document.getElementById("gravity").value = settings.gravity;
+					document.getElementById("gravity-value").textContent = settings.gravity.toFixed(1);
+				}
+
+				if (settings.elasticity !== undefined) {
+					document.getElementById("elasticity").value = settings.elasticity;
+					document.getElementById("elasticity-value").textContent = settings.elasticity.toFixed(2);
+				}
+			});
+
+			socket.on("dropping:changed", data => {
+				isDropping = data.dropping;
+				const btn = document.getElementById("toggle-dropping");
+
+				if (isDropping) {
+					btn.textContent = "Stop Ball Dropping";
+					btn.classList.remove("btn-success");
+					btn.classList.add("btn-active");
+					document.getElementById("status").textContent = "Dropping Enabled";
+				} else {
+					btn.textContent = "Allow Ball Dropping";
+					btn.classList.remove("btn-active");
+					btn.classList.add("btn-success");
+					document.getElementById("status").textContent = "Dropping Disabled";
+				}
+			});
+
+			socket.on("countdown:start", data => {
+				let remaining = data.seconds;
+				document.getElementById("status").textContent = `Countdown: ${remaining}s`;
+
+				const interval = setInterval(() => {
+					remaining--;
+					if (remaining <= 0) {
+						clearInterval(interval);
+						document.getElementById("status").textContent = "Countdown Ended";
+					} else {
+						document.getElementById("status").textContent = `Countdown: ${remaining}s`;
+					}
+				}, 1000);
+			});
+
+			socket.on("countdown:end", () => {
+				document.getElementById("status").textContent = "Countdown Ended";
+
+				// Auto-fill after countdown ends
+				const autoFillDelay = parseInt(document.getElementById("autofill-seconds").value);
+				if (autoFillDelay >= 0) {
+					if (autoFillDelay === 0) {
+						performAutoFill();
+					} else {
+						document.getElementById("status").textContent = `Auto-fill in ${autoFillDelay}s...`;
+						setTimeout(() => {
+							performAutoFill();
+						}, autoFillDelay * 1000);
+					}
+				}
+			});
+
+			socket.on("world:reset", () => {
+				// This is handled locally in resetWorld function
+			});
+
+			// Toggle background
+			function toggleBackground() {
+				const isTransparent = document.getElementById("transparent-bg").checked;
+				if (isTransparent) {
+					document.body.classList.add("transparent");
+				} else {
+					document.body.classList.remove("transparent");
+				}
+			}
+
+			// Toggle UI visibility
+			function toggleUI() {
+				document.body.classList.toggle("hidden-ui");
+			}
+
+			// Keyboard shortcut for toggling UI
+			document.addEventListener("keydown", e => {
+				if (e.key === "h" || e.key === "H") {
+					toggleUI();
+				}
+			});
+
+			// Auto-fill with random balls
+			const autofillColors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#F7DC6F", "#BB8FCE", "#58D68D", "#F8B739", "#EC7063"];
+			let autofillInterval = null;
+
+			// Calculate optimal ball size and count based on screen size
+			function calculateBallParams() {
+				const totalBalls = Math.floor((window.innerWidth * window.innerHeight) / ballSize / ballSize);
+				return { radius: ballSize, count: totalBalls };
+			}
+
+			// Perform the auto-fill
+			function performAutoFill() {
+				// Clear any existing interval
+				if (autofillInterval) {
+					clearInterval(autofillInterval);
+				}
+
+				const { radius, count: targetCount } = calculateBallParams();
+				const currentCount = balls.length;
+				const ballsToAdd = Math.max(0, targetCount - currentCount);
+
+				if (ballsToAdd === 0) {
+					document.getElementById("status").textContent = "Already filled!";
+					return;
+				}
+
+				document.getElementById("status").textContent = `Auto-filling ${ballsToAdd} balls...`;
+
+				const interval = 2000 / ballsToAdd; // Spread over 2 seconds (faster)
+				let added = 0;
+
+				autofillInterval = setInterval(() => {
+					if (added >= ballsToAdd) {
+						clearInterval(autofillInterval);
+						autofillInterval = null;
+						document.getElementById("status").textContent = "Auto-fill Complete";
+						return;
+					}
+
+					// Create random ball with pure color (no Gravatar)
+					const x = Math.random() * (window.innerWidth - radius * 4) + radius * 2;
+					const y = -50;
+					const color = autofillColors[Math.floor(Math.random() * autofillColors.length)];
+					const elasticity = parseFloat(document.getElementById("elasticity").value);
+
+					const ball = Bodies.circle(x, y, radius, {
+						restitution: elasticity,
+						friction: 0.001,
+						density: 0.001,
+						render: {
+							fillStyle: color,
+							strokeStyle: "#fff",
+							lineWidth: 3
+						}
+					});
+
+					Composite.add(engine.world, ball);
+					balls.push(ball);
+					updateBallCount();
+					added++;
+				}, interval);
+			}
+
+			// Force auto-fill immediately
+			function forceAutoFill() {
+				performAutoFill();
+			}
+
+			// Window resize with boundary adjustment
+			window.addEventListener("resize", () => {
+				if (render && engine) {
+					const width = window.innerWidth;
+					const height = window.innerHeight;
+
+					// Update canvas size
+					render.canvas.width = width;
+					render.canvas.height = height;
+					render.options.width = width;
+					render.options.height = height;
+
+					// Remove old boundaries
+					Composite.remove(engine.world, ground);
+					Composite.remove(engine.world, leftWall);
+					Composite.remove(engine.world, rightWall);
+
+// Create new boundaries with updated size (outside visible area)
+				ground = Bodies.rectangle(width / 2, height + 10, width, 20, {
+					isStatic: true,
+					render: { fillStyle: "transparent" }
+				});
+
+				leftWall = Bodies.rectangle(-10, height / 2, 20, height, {
+					isStatic: true,
+					render: { fillStyle: "transparent" }
+				});
+
+				rightWall = Bodies.rectangle(width + 10, height / 2, 20, height, {
+						isStatic: true,
+						render: { fillStyle: "transparent" }
+					});
+
+					// Add new boundaries
+					Composite.add(engine.world, [ground, leftWall, rightWall]);
+
+					// Update target count when window resizes
+					updateTargetCount();
+				}
+			});
+		</script>
+	</body>
 </html>

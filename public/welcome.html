@@ -1,273 +1,306 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-TW">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>歡迎加入 - Lightning Talk</title>
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      color: white;
-      overflow: hidden;
-    }
-    
-    .container {
-      text-align: center;
-      padding: 40px;
-      animation: fadeIn 1s ease-in;
-    }
-    
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    
-    h1 {
-      font-size: 4rem;
-      margin-bottom: 20px;
-      text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.3);
-      animation: pulse 2s ease-in-out infinite;
-    }
-    
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-    }
-    
-    .subtitle {
-      font-size: 1.8rem;
-      margin-bottom: 40px;
-      opacity: 0.9;
-    }
-    
-    .qr-container {
-      background: white;
-      padding: 30px;
-      border-radius: 20px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-      display: inline-block;
-      margin: 30px 0;
-      animation: bounceIn 1s ease-out;
-    }
-    
-    @keyframes bounceIn {
-      0% { transform: scale(0.3); opacity: 0; }
-      50% { transform: scale(1.05); }
-      70% { transform: scale(0.9); }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    
-    #qrcode {
-      margin: 0 auto;
-    }
-    
-    .url-text {
-      margin-top: 20px;
-      font-size: 1.5rem;
-      color: #333;
-      font-weight: 600;
-      word-break: break-all;
-      padding: 0 20px;
-    }
-    
-    .stats {
-      margin-top: 50px;
-      font-size: 1.5rem;
-    }
-    
-    .user-count {
-      display: inline-flex;
-      align-items: center;
-      gap: 20px;
-      background: rgba(255, 255, 255, 0.2);
-      padding: 20px 40px;
-      border-radius: 50px;
-      backdrop-filter: blur(10px);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-      margin-top: 20px;
-    }
-    
-    .count-number {
-      font-size: 4rem;
-      font-weight: bold;
-      color: #FFD700;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-      animation: countUpdate 0.5s ease-out;
-    }
-    
-    @keyframes countUpdate {
-      0% { transform: scale(1.3); }
-      100% { transform: scale(1); }
-    }
-    
-    .count-label {
-      font-size: 1.8rem;
-      opacity: 0.9;
-    }
-    
-    .icon {
-      font-size: 3rem;
-      animation: float 3s ease-in-out infinite;
-    }
-    
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
-    }
-    
-    .footer {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      font-size: 1rem;
-      opacity: 0.7;
-    }
-    
-    .instructions {
-      margin-top: 30px;
-      font-size: 1.3rem;
-      opacity: 0.9;
-      line-height: 1.8;
-    }
-    
-    .instructions strong {
-      color: #FFD700;
-    }
-    
-    /* 連線狀態指示 */
-    .status-indicator {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: #27ae60;
-      box-shadow: 0 0 20px rgba(39, 174, 96, 0.7);
-      animation: blink 2s ease-in-out infinite;
-    }
-    
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
-    
-    .status-indicator.disconnected {
-      background: #e74c3c;
-      box-shadow: 0 0 20px rgba(231, 76, 60, 0.7);
-    }
-  </style>
-</head>
-<body>
-  <div class="status-indicator" id="status-indicator" title="Connected"></div>
-  
-  <div class="container">
-    <h1>⚡ Lightning Talk</h1>
-    <div class="subtitle">SITCON 2026</div>
-    
-    <div class="instructions">
-      <strong>📱 掃描 QR Code 或輸入網址加入</strong>
-    </div>
-    
-    <div class="qr-container">
-      <div id="qrcode"></div>
-      <div class="url-text" id="url-text"></div>
-    </div>
-    
-    <div class="stats">
-      <div class="user-count">
-        <span class="icon">👥</span>
-        <div>
-          <div class="count-number" id="user-count">0</div>
-          <div class="count-label">參與者</div>
-        </div>
-      </div>
-    </div>
-  </div>
-  
-  <div class="footer">
-    SITCON 2026
-  </div>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>歡迎加入 - Lightning Talk</title>
+		<script src="/socket.io/socket.io.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
 
-  <script>
-    const socket = io();
-    let currentUserCount = 0;
-    
-    // 取得當前 URL
-    const currentUrl = window.location.origin;
-    
-    // 生成 QR Code
-    const qrcode = new QRCode(document.getElementById("qrcode"), {
-      text: currentUrl,
-      width: 300,
-      height: 300,
-      colorDark: "#000000",
-      colorLight: "#ffffff",
-      correctLevel: QRCode.CorrectLevel.H
-    });
-    
-    // 顯示 URL
-    document.getElementById('url-text').textContent = currentUrl;
-    
-    // 連線狀態管理
-    const statusIndicator = document.getElementById('status-indicator');
-    
-    socket.on('connect', () => {
-      console.log('Connected to server');
-      statusIndicator.classList.remove('disconnected');
-      statusIndicator.title = 'Connected';
-      
-      // 加入歡迎畫面房間
-      socket.emit('welcome:join');
-    });
-    
-    socket.on('disconnect', () => {
-      console.log('Disconnected from server');
-      statusIndicator.classList.add('disconnected');
-      statusIndicator.title = 'Disconnected';
-    });
-    
-    // 接收使用者人數更新
-    socket.on('users:count', (data) => {
-      const newCount = data.count || 0;
-      if (newCount !== currentUserCount) {
-        currentUserCount = newCount;
-        updateUserCount(newCount);
-      }
-    });
-    
-    // 更新使用者人數顯示
-    function updateUserCount(count) {
-      const countElement = document.getElementById('user-count');
-      countElement.textContent = count;
-      
-      // 觸發動畫
-      countElement.style.animation = 'none';
-      setTimeout(() => {
-        countElement.style.animation = 'countUpdate 0.5s ease-out';
-      }, 10);
-    }
-    
-    // 定期請求更新
-    setInterval(() => {
-      if (socket.connected) {
-        socket.emit('welcome:requestCount');
-      }
-    }, 2000);
-  </script>
-</body>
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				min-height: 100vh;
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				align-items: center;
+				color: white;
+				overflow: hidden;
+			}
+
+			.container {
+				text-align: center;
+				padding: 40px;
+				animation: fadeIn 1s ease-in;
+			}
+
+			@keyframes fadeIn {
+				from {
+					opacity: 0;
+					transform: translateY(-20px);
+				}
+				to {
+					opacity: 1;
+					transform: translateY(0);
+				}
+			}
+
+			h1 {
+				font-size: 4rem;
+				margin-bottom: 20px;
+				text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.3);
+				animation: pulse 2s ease-in-out infinite;
+			}
+
+			@keyframes pulse {
+				0%,
+				100% {
+					transform: scale(1);
+				}
+				50% {
+					transform: scale(1.05);
+				}
+			}
+
+			.subtitle {
+				font-size: 1.8rem;
+				margin-bottom: 40px;
+				opacity: 0.9;
+			}
+
+			.qr-container {
+				background: white;
+				padding: 30px;
+				border-radius: 20px;
+				box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+				display: inline-block;
+				margin: 30px 0;
+				animation: bounceIn 1s ease-out;
+			}
+
+			@keyframes bounceIn {
+				0% {
+					transform: scale(0.3);
+					opacity: 0;
+				}
+				50% {
+					transform: scale(1.05);
+				}
+				70% {
+					transform: scale(0.9);
+				}
+				100% {
+					transform: scale(1);
+					opacity: 1;
+				}
+			}
+
+			#qrcode {
+				margin: 0 auto;
+			}
+
+			.url-text {
+				margin-top: 20px;
+				font-size: 1.5rem;
+				color: #333;
+				font-weight: 600;
+				word-break: break-all;
+				padding: 0 20px;
+			}
+
+			.stats {
+				margin-top: 50px;
+				font-size: 1.5rem;
+			}
+
+			.user-count {
+				display: inline-flex;
+				align-items: center;
+				gap: 20px;
+				background: rgba(255, 255, 255, 0.2);
+				padding: 20px 40px;
+				border-radius: 50px;
+				backdrop-filter: blur(10px);
+				box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+				margin-top: 20px;
+			}
+
+			.count-number {
+				font-size: 4rem;
+				font-weight: bold;
+				color: #ffd700;
+				text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+				animation: countUpdate 0.5s ease-out;
+			}
+
+			@keyframes countUpdate {
+				0% {
+					transform: scale(1.3);
+				}
+				100% {
+					transform: scale(1);
+				}
+			}
+
+			.count-label {
+				font-size: 1.8rem;
+				opacity: 0.9;
+			}
+
+			.icon {
+				font-size: 3rem;
+				animation: float 3s ease-in-out infinite;
+			}
+
+			@keyframes float {
+				0%,
+				100% {
+					transform: translateY(0);
+				}
+				50% {
+					transform: translateY(-10px);
+				}
+			}
+
+			.footer {
+				position: fixed;
+				bottom: 20px;
+				right: 20px;
+				font-size: 1rem;
+				opacity: 0.7;
+			}
+
+			.instructions {
+				margin-top: 30px;
+				font-size: 1.3rem;
+				opacity: 0.9;
+				line-height: 1.8;
+			}
+
+			.instructions strong {
+				color: #ffd700;
+			}
+
+			/* 連線狀態指示 */
+			.status-indicator {
+				position: fixed;
+				top: 20px;
+				right: 20px;
+				width: 20px;
+				height: 20px;
+				border-radius: 50%;
+				background: #27ae60;
+				box-shadow: 0 0 20px rgba(39, 174, 96, 0.7);
+				animation: blink 2s ease-in-out infinite;
+			}
+
+			@keyframes blink {
+				0%,
+				100% {
+					opacity: 1;
+				}
+				50% {
+					opacity: 0.3;
+				}
+			}
+
+			.status-indicator.disconnected {
+				background: #e74c3c;
+				box-shadow: 0 0 20px rgba(231, 76, 60, 0.7);
+			}
+		</style>
+	</head>
+	<body>
+		<div class="status-indicator" id="status-indicator" title="Connected"></div>
+
+		<div class="container">
+			<h1>⚡ Lightning Talk</h1>
+			<div class="subtitle">SITCON 2026</div>
+
+			<div class="instructions">
+				<strong>📱 掃描 QR Code 或輸入網址加入</strong>
+			</div>
+
+			<div class="qr-container">
+				<div id="qrcode"></div>
+				<div class="url-text" id="url-text"></div>
+			</div>
+
+			<div class="stats">
+				<div class="user-count">
+					<span class="icon">👥</span>
+					<div>
+						<div class="count-number" id="user-count">0</div>
+						<div class="count-label">參與者</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="footer">SITCON 2026</div>
+
+		<script>
+			const socket = io();
+			let currentUserCount = 0;
+
+			// 取得當前 URL
+			const currentUrl = window.location.origin;
+
+			// 生成 QR Code
+			const qrcode = new QRCode(document.getElementById("qrcode"), {
+				text: currentUrl,
+				width: 300,
+				height: 300,
+				colorDark: "#000000",
+				colorLight: "#ffffff",
+				correctLevel: QRCode.CorrectLevel.H
+			});
+
+			// 顯示 URL
+			document.getElementById("url-text").textContent = currentUrl;
+
+			// 連線狀態管理
+			const statusIndicator = document.getElementById("status-indicator");
+
+			socket.on("connect", () => {
+				console.log("Connected to server");
+				statusIndicator.classList.remove("disconnected");
+				statusIndicator.title = "Connected";
+
+				// 加入歡迎畫面房間
+				socket.emit("welcome:join");
+			});
+
+			socket.on("disconnect", () => {
+				console.log("Disconnected from server");
+				statusIndicator.classList.add("disconnected");
+				statusIndicator.title = "Disconnected";
+			});
+
+			// 接收使用者人數更新
+			socket.on("users:count", data => {
+				const newCount = data.count || 0;
+				if (newCount !== currentUserCount) {
+					currentUserCount = newCount;
+					updateUserCount(newCount);
+				}
+			});
+
+			// 更新使用者人數顯示
+			function updateUserCount(count) {
+				const countElement = document.getElementById("user-count");
+				countElement.textContent = count;
+
+				// 觸發動畫
+				countElement.style.animation = "none";
+				setTimeout(() => {
+					countElement.style.animation = "countUpdate 0.5s ease-out";
+				}, 10);
+			}
+
+			// 定期請求更新
+			setInterval(() => {
+				if (socket.connected) {
+					socket.emit("welcome:requestCount");
+				}
+			}, 2000);
+		</script>
+	</body>
 </html>
