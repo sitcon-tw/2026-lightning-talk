@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant-TW">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,7 +16,12 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       overflow: hidden;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #00ff00;
+      transition: background 0.3s;
+    }
+    
+    body.transparent {
+      background: transparent;
     }
     
     #login-screen {
@@ -207,6 +212,22 @@
     #stats div {
       margin: 5px 0;
     }
+    
+    .hidden-ui #control-panel,
+    .hidden-ui #stats {
+      display: none !important;
+    }
+    
+    .control-group input[type="checkbox"] {
+      width: auto;
+      margin-right: 8px;
+    }
+    
+    .control-group .checkbox-label {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -222,7 +243,7 @@
   <div id="canvas-container"></div>
   
   <div id="stats">
-    <div><strong>Ball Count:</strong> <span id="ball-count">0</span></div>
+    <div><strong>Ball Count:</strong> <span id="ball-count">0</span> / <span id="target-count">0</span></div>
     <div><strong>Status:</strong> <span id="status">Ready</span></div>
   </div>
   
@@ -240,6 +261,11 @@
     </div>
     
     <div class="control-group">
+      <label>Ball Size: <span class="value-display" id="ball-size-value">40</span>px</label>
+      <input type="range" id="ball-size" min="20" max="100" step="5" value="40" />
+    </div>
+    
+    <div class="control-group">
       <label>Countdown Timer (seconds)</label>
       <input type="number" id="countdown-seconds" min="1" max="3600" value="60" />
       <button class="btn-primary" onclick="startCountdown()">Start Countdown</button>
@@ -254,6 +280,26 @@
     <div class="control-group">
       <button class="btn-danger" onclick="resetWorld()">Reset (Remove Floor)</button>
     </div>
+    
+    <div class="control-group">
+      <label class="checkbox-label">
+        <input type="checkbox" id="transparent-bg" onchange="toggleBackground()" />
+        Transparent Background
+      </label>
+    </div>
+    
+    <div class="control-group">
+      <button class="btn-warning" onclick="toggleUI()">Toggle UI (H)</button>
+    </div>
+    
+    <div class="control-group">
+      <label>Auto-fill after countdown ends (seconds)</label>
+      <input type="number" id="autofill-seconds" min="0" max="60" value="5" />
+    </div>
+    
+    <div class="control-group">
+      <button class="btn-primary" onclick="forceAutoFill()">Force Fill Now</button>
+    </div>
   </div>
 
   <script>
@@ -265,6 +311,7 @@
     let isAuthenticated = false;
     let isDropping = false;
     let ballCount = 0;
+    let ballSize = 40; // Default ball size
     
     const { Engine, Render, Runner, Bodies, Composite, World, Events } = Matter;
     
@@ -310,17 +357,17 @@
       // Create boundaries
       ground = Bodies.rectangle(width / 2, height - 10, width, 20, {
         isStatic: true,
-        render: { fillStyle: '#34495e' }
+        render: { fillStyle: 'transparent' }
       });
       
       leftWall = Bodies.rectangle(10, height / 2, 20, height, {
         isStatic: true,
-        render: { fillStyle: '#34495e' }
+        render: { fillStyle: 'transparent' }
       });
       
       rightWall = Bodies.rectangle(width - 10, height / 2, 20, height, {
         isStatic: true,
-        render: { fillStyle: '#34495e' }
+        render: { fillStyle: 'transparent' }
       });
       
       Composite.add(engine.world, [ground, leftWall, rightWall]);
@@ -330,6 +377,7 @@
       Runner.run(runner, engine);
       
       updateBallCount();
+      updateTargetCount();
     }
     
     // Physics controls
@@ -347,6 +395,12 @@
         ball.restitution = value;
       });
       socket.emit('admin:updatePhysics', { elasticity: value });
+    });
+    
+    document.getElementById('ball-size').addEventListener('input', (e) => {
+      ballSize = parseInt(e.target.value);
+      document.getElementById('ball-size-value').textContent = ballSize;
+      updateTargetCount();
     });
     
     function toggleDropping() {
@@ -393,7 +447,7 @@
           // Re-add ground
           ground = Bodies.rectangle(window.innerWidth / 2, window.innerHeight - 10, window.innerWidth, 20, {
             isStatic: true,
-            render: { fillStyle: '#34495e' }
+            render: { fillStyle: 'transparent' }
           });
           Composite.add(engine.world, ground);
         }, 3000);
@@ -403,6 +457,13 @@
     function updateBallCount() {
       ballCount = balls.length;
       document.getElementById('ball-count').textContent = ballCount;
+      updateTargetCount();
+    }
+    
+    // Update target count based on screen size and ball size
+    function updateTargetCount() {
+      const { radius, count } = calculateBallParams();
+      document.getElementById('target-count').textContent = count;
     }
     
     // Socket events
@@ -411,7 +472,7 @@
       
       const x = Math.random() * (window.innerWidth - 200) + 100;
       const y = -50;
-      const radius = 40;
+      const radius = ballSize; // Use current ball size setting
       
       const elasticity = parseFloat(document.getElementById('elasticity').value);
       
@@ -422,12 +483,7 @@
         render: {
           fillStyle: data.color,
           strokeStyle: '#fff',
-          lineWidth: 3,
-          sprite: {
-            texture: data.gravatarUrl,
-            xScale: radius * 2 / 80,
-            yScale: radius * 2 / 80
-          }
+          lineWidth: 3
         }
       });
       
@@ -483,19 +539,160 @@
     
     socket.on('countdown:end', () => {
       document.getElementById('status').textContent = 'Countdown Ended';
+      
+      // Auto-fill after countdown ends
+      const autoFillDelay = parseInt(document.getElementById('autofill-seconds').value);
+      if (autoFillDelay >= 0) {
+        if (autoFillDelay === 0) {
+          performAutoFill();
+        } else {
+          document.getElementById('status').textContent = `Auto-fill in ${autoFillDelay}s...`;
+          setTimeout(() => {
+            performAutoFill();
+          }, autoFillDelay * 1000);
+        }
+      }
     });
     
     socket.on('world:reset', () => {
       // This is handled locally in resetWorld function
     });
     
-    // Window resize
+    // Toggle background
+    function toggleBackground() {
+      const isTransparent = document.getElementById('transparent-bg').checked;
+      if (isTransparent) {
+        document.body.classList.add('transparent');
+      } else {
+        document.body.classList.remove('transparent');
+      }
+    }
+    
+    // Toggle UI visibility
+    function toggleUI() {
+      document.body.classList.toggle('hidden-ui');
+    }
+    
+    // Keyboard shortcut for toggling UI
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'h' || e.key === 'H') {
+        toggleUI();
+      }
+    });
+    
+    // Auto-fill with random balls
+    const autofillColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#F7DC6F', '#BB8FCE', '#58D68D', '#F8B739', '#EC7063'];
+    let autofillInterval = null;
+    
+    // Calculate optimal ball size and count based on screen size
+    function calculateBallParams() {
+      const screenArea = window.innerWidth * window.innerHeight;
+      const radius = ballSize; // Use the slider value
+      const ballArea = Math.PI * radius * radius;
+      // Calculate how many balls needed to fill 75% of screen (accounting for packing efficiency ~60%)
+      const targetFillRatio = 0.75;
+      const packingEfficiency = 0.60;
+      const totalBalls = Math.floor((screenArea * targetFillRatio) / (ballArea / packingEfficiency));
+      
+      return { radius: radius, count: Math.max(50, Math.min(500, totalBalls)) };
+    }
+    
+    // Perform the auto-fill
+    function performAutoFill() {
+      // Clear any existing interval
+      if (autofillInterval) {
+        clearInterval(autofillInterval);
+      }
+      
+      const { radius, count: targetCount } = calculateBallParams();
+      const currentCount = balls.length;
+      const ballsToAdd = Math.max(0, targetCount - currentCount);
+      
+      if (ballsToAdd === 0) {
+        document.getElementById('status').textContent = 'Already filled!';
+        return;
+      }
+      
+      document.getElementById('status').textContent = `Auto-filling ${ballsToAdd} balls...`;
+      
+      const interval = 2000 / ballsToAdd; // Spread over 2 seconds (faster)
+      let added = 0;
+      
+      autofillInterval = setInterval(() => {
+        if (added >= ballsToAdd) {
+          clearInterval(autofillInterval);
+          autofillInterval = null;
+          document.getElementById('status').textContent = 'Auto-fill Complete';
+          return;
+        }
+        
+        // Create random ball with pure color (no Gravatar)
+        const x = Math.random() * (window.innerWidth - radius * 4) + radius * 2;
+        const y = -50;
+        const color = autofillColors[Math.floor(Math.random() * autofillColors.length)];
+        const elasticity = parseFloat(document.getElementById('elasticity').value);
+        
+        const ball = Bodies.circle(x, y, radius, {
+          restitution: elasticity,
+          friction: 0.001,
+          density: 0.001,
+          render: {
+            fillStyle: color,
+            strokeStyle: '#fff',
+            lineWidth: 3
+          }
+        });
+        
+        Composite.add(engine.world, ball);
+        balls.push(ball);
+        updateBallCount();
+        added++;
+      }, interval);
+    }
+    
+    // Force auto-fill immediately
+    function forceAutoFill() {
+      performAutoFill();
+    }
+    
+    // Window resize with boundary adjustment
     window.addEventListener('resize', () => {
-      if (render) {
-        render.canvas.width = window.innerWidth;
-        render.canvas.height = window.innerHeight;
-        render.options.width = window.innerWidth;
-        render.options.height = window.innerHeight;
+      if (render && engine) {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        
+        // Update canvas size
+        render.canvas.width = width;
+        render.canvas.height = height;
+        render.options.width = width;
+        render.options.height = height;
+        
+        // Remove old boundaries
+        Composite.remove(engine.world, ground);
+        Composite.remove(engine.world, leftWall);
+        Composite.remove(engine.world, rightWall);
+        
+        // Create new boundaries with updated size
+        ground = Bodies.rectangle(width / 2, height - 10, width, 20, {
+          isStatic: true,
+          render: { fillStyle: 'transparent' }
+        });
+        
+        leftWall = Bodies.rectangle(10, height / 2, 20, height, {
+          isStatic: true,
+          render: { fillStyle: 'transparent' }
+        });
+        
+        rightWall = Bodies.rectangle(width - 10, height / 2, 20, height, {
+          isStatic: true,
+          render: { fillStyle: 'transparent' }
+        });
+        
+        // Add new boundaries
+        Composite.add(engine.world, [ground, leftWall, rightWall]);
+        
+        // Update target count when window resizes
+        updateTargetCount();
       }
     });
   </script>

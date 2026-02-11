@@ -73,6 +73,24 @@ setInterval(() => {
   }
 }, 60000);
 
+// Helper function to count connected users
+function getUserCount() {
+  const sockets = io.sockets.sockets;
+  let count = 0;
+  for (const [id, socket] of sockets) {
+    if (socket.rooms.has('users')) {
+      count++;
+    }
+  }
+  return count;
+}
+
+// Broadcast user count to welcome screens
+function broadcastUserCount() {
+  const count = getUserCount();
+  io.to('welcome').emit('users:count', { count });
+}
+
 io.on('connection', (socket) => {
   console.log('New connection:', socket.id);
   
@@ -88,6 +106,22 @@ io.on('connection', (socket) => {
       console.log('Admin authenticated:', socket.id);
     } else {
       socket.emit('admin:authenticated', { success: false, error: 'Invalid password' });
+    }
+  });
+  
+  // Welcome screen joining
+  socket.on('welcome:join', () => {
+    socket.join('welcome');
+    const count = getUserCount();
+    socket.emit('users:count', { count });
+    console.log('Welcome screen joined:', socket.id);
+  });
+  
+  // Request user count
+  socket.on('welcome:requestCount', () => {
+    if (socket.rooms.has('welcome')) {
+      const count = getUserCount();
+      socket.emit('users:count', { count });
     }
   });
   
@@ -111,6 +145,9 @@ io.on('connection', (socket) => {
     });
     
     console.log('User joined:', data.email);
+    
+    // Broadcast updated user count to welcome screens
+    broadcastUserCount();
   });
   
   // User dropping a ball
@@ -132,12 +169,8 @@ io.on('connection', (socket) => {
       return;
     }
     
-    // Validate color
-    let color = data?.color;
-    if (!color || typeof color !== 'string' || !/^#[0-9A-F]{6}$/i.test(color)) {
-      // Generate random color if invalid
-      color = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
-    }
+    // Generate random color for each ball
+    const color = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
     
     const ballData = {
       gravatarUrl: socket.data.gravatarUrl,
@@ -223,8 +256,14 @@ io.on('connection', (socket) => {
   });
   
   socket.on('disconnect', () => {
+    const wasUser = socket.rooms.has('users');
     userRateLimits.delete(socket.id);
     console.log('Disconnected:', socket.id);
+    
+    // Broadcast updated user count if a user disconnected
+    if (wasUser) {
+      setTimeout(() => broadcastUserCount(), 100);
+    }
   });
 });
 

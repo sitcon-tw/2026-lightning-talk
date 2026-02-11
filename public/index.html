@@ -174,39 +174,9 @@
 				font-size: 1.1em;
 			}
 
-			.color-picker {
-				display: flex;
-				justify-content: center;
-				gap: 10px;
-				margin: 20px 0;
-				flex-wrap: wrap;
-			}
-
-			.color-option {
-				width: 50px;
-				height: 50px;
-				border-radius: 50%;
-				border: 3px solid white;
-				cursor: pointer;
-				transition: all 0.3s;
-				box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-			}
-
-			.color-option:hover {
-				transform: scale(1.2);
-			}
-
-			.color-option.selected {
-				transform: scale(1.3);
-				border-width: 5px;
-				box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-			}
-
 			#avatar-display {
 				animation: floating 3s ease-in-out infinite;
-        margin-block: 40px;
-			}
-
+			margin-block: 40px;
 			@keyframes floating {
 				0% {
 					transform: translateY(0);
@@ -256,17 +226,6 @@
 				<h1>Drop Your Ball!</h1>
 				<img id="avatar-active" class="avatar" alt="Your avatar" />
 
-				<div class="color-picker" id="color-picker">
-					<div class="color-option selected" data-color="#FF6B6B" style="background: #ff6b6b"></div>
-					<div class="color-option" data-color="#4ECDC4" style="background: #4ecdc4"></div>
-					<div class="color-option" data-color="#45B7D1" style="background: #45b7d1"></div>
-					<div class="color-option" data-color="#F7DC6F" style="background: #f7dc6f"></div>
-					<div class="color-option" data-color="#BB8FCE" style="background: #bb8fce"></div>
-					<div class="color-option" data-color="#58D68D" style="background: #58d68d"></div>
-					<div class="color-option" data-color="#F8B739" style="background: #f8b739"></div>
-					<div class="color-option" data-color="#EC7063" style="background: #ec7063"></div>
-				</div>
-
 				<button id="drop-button" class="drop-button" onclick="dropBall()">DROP!</button>
 
 				<div id="cooldown-display" class="cooldown" style="display: none"></div>
@@ -281,17 +240,7 @@
 			let gravatarUrl = "";
 			let canDrop = false;
 			let cooldownEnd = 0;
-			let selectedColor = "#FF6B6B";
 			let countdownInterval = null;
-
-			// Color picker
-			document.querySelectorAll(".color-option").forEach(option => {
-				option.addEventListener("click", () => {
-					document.querySelectorAll(".color-option").forEach(o => o.classList.remove("selected"));
-					option.classList.add("selected");
-					selectedColor = option.dataset.color;
-				});
-			});
 
 			// Email submission
 			function submitEmail() {
@@ -390,7 +339,7 @@
 					return;
 				}
 
-				socket.emit("user:drop", { color: selectedColor });
+				socket.emit("user:drop", {});
 			}
 
 			function startCooldown() {
