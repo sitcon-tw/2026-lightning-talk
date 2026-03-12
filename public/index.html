@@ -551,7 +551,7 @@
 					const scale = 1 + progress * 0.3;
 					flyingBall.style.transform = `scale(${scale})`;
 
-					if (y < -150) {
+					if (y < -150 || x < -150 || x > window.innerWidth + 150) {
 						flyingBall.remove();
 						// Spawn next ball rolling up from bottom after cooldown
 						rollUpBall();
