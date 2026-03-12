@@ -131,39 +131,94 @@
 				text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
 			}
 
-			.drop-button {
-				width: 200px;
-				height: 200px;
-				border-radius: 50%;
-				font-size: 24px;
-				background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
-				color: white;
-				border: 6px solid white;
-				cursor: pointer;
-				transition: all 0.3s;
-				box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-				margin: 20px auto;
-			}
-
-			.drop-button:hover:not(:disabled) {
-				transform: scale(1.1);
-				box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
-			}
-
-			.drop-button:active:not(:disabled) {
-				transform: scale(0.95);
-			}
-
-			.drop-button:disabled {
-				background: #95a5a6;
-				cursor: not-allowed;
-				transform: scale(1);
-			}
-
 			.cooldown {
 				font-size: 1.5em;
 				margin-top: 15px;
 				opacity: 0.8;
+			}
+
+			/* Throw screen */
+			#active-screen {
+				position: fixed !important;
+				inset: 0;
+				display: none;
+				flex-direction: column;
+				align-items: center;
+				justify-content: flex-start;
+				padding-top: 40px;
+			}
+
+			#active-screen.active {
+				display: flex !important;
+			}
+
+			#throw-area {
+				position: fixed;
+				inset: 0;
+				pointer-events: none;
+			}
+
+			#throw-info {
+				font-size: 1em;
+				opacity: 0.7;
+				margin-top: 8px;
+			}
+
+			.throw-ball {
+				position: absolute;
+				border-radius: 50%;
+				border: 4px solid white;
+				box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+				pointer-events: none;
+				will-change: transform;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				overflow: hidden;
+				background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+				transition: box-shadow 0.1s;
+				cursor: grab;
+			}
+
+			.throw-ball img {
+				width: 100%;
+				height: 100%;
+				border-radius: 50%;
+				display: block;
+				pointer-events: none;
+				user-select: none;
+			}
+
+			.throw-ball.cooldown-ball {
+				filter: grayscale(0.7) brightness(0.7);
+			}
+
+			#cooldown-overlay {
+				position: fixed;
+				bottom: 30px;
+				left: 50%;
+				transform: translateX(-50%);
+				background: rgba(0, 0, 0, 0.6);
+				color: white;
+				padding: 10px 24px;
+				border-radius: 20px;
+				font-size: 1.1em;
+				font-weight: 600;
+				pointer-events: none;
+				opacity: 0;
+				transition: opacity 0.2s;
+			}
+
+			#cooldown-overlay.visible {
+				opacity: 1;
+			}
+
+			#timer-display {
+				position: fixed !important;
+				top: 20px;
+				right: 20px;
+				font-size: 2.5em !important;
+				margin: 0 !important;
 			}
 
 			.status-message {
@@ -176,7 +231,9 @@
 
 			#avatar-display {
 				animation: floating 3s ease-in-out infinite;
-			margin-block: 40px;
+				margin-block: 40px;
+			}
+
 			@keyframes floating {
 				0% {
 					transform: translateY(0);
@@ -200,7 +257,7 @@
 				</h1>
 				<p>請輸入 Email 以繼續</p>
 				<input type="email" id="email-input" placeholder="your@email.com" />
-				<button onclick="submitEmail()">繼續</button>
+				<button id="submit-email-btn">繼續</button>
 				<div id="email-error" class="error" style="display: none"></div>
 			</div>
 
@@ -209,8 +266,8 @@
 				<h1>確認你的頭像</h1>
 				<img id="avatar-preview" class="avatar" alt="Your avatar" />
 				<p id="email-display"></p>
-				<button onclick="confirmAvatar()">看起來很讚！</button>
-				<button onclick="backToEmail()" style="margin-left: 10px; background: transparent; color: white; border: 2px solid white">更改 Email</button>
+				<button id="confirm-avatar-btn">看起來很讚！</button>
+				<button id="back-to-email-btn" style="margin-left: 10px; background: transparent; color: white; border: 2px solid white">更改 Email</button>
 			</div>
 
 			<!-- Waiting Screen -->
@@ -225,10 +282,9 @@
 			<div id="active-screen" class="screen">
 				<h1>Drop Your Ball!</h1>
 				<img id="avatar-active" class="avatar" alt="Your avatar" />
-
-				<button id="drop-button" class="drop-button" onclick="dropBall()">DROP!</button>
-
-				<div id="cooldown-display" class="cooldown" style="display: none"></div>
+				<p id="throw-info">往上滑丟出球！</p>
+				<div id="throw-area"></div>
+				<div id="cooldown-overlay"></div>
 				<div id="timer-display" class="timer" style="display: none"></div>
 			</div>
 		</div>
@@ -243,7 +299,7 @@
 			let countdownInterval = null;
 
 			// Email submission
-			function submitEmail() {
+			const submitEmail = () => {
 				const email = document.getElementById("email-input").value.trim();
 
 				if (!email || !email.includes("@")) {
@@ -261,17 +317,20 @@
 				document.getElementById("avatar-preview").src = gravatarUrl;
 				document.getElementById("email-display").textContent = email;
 				showScreen("confirm-screen");
-			}
+			};
 
-			function backToEmail() {
+			const backToEmail = () => {
 				showScreen("email-screen");
-			}
+			};
 
-			function confirmAvatar() {
+			const confirmAvatar = () => {
 				// Join as user
 				socket.emit("user:join", { email: userEmail });
-			}
+			};
 
+			document.getElementById("submit-email-btn").addEventListener("click", submitEmail);
+			document.getElementById("confirm-avatar-btn").addEventListener("click", confirmAvatar);
+			document.getElementById("back-to-email-btn").addEventListener("click", backToEmail);
 			document.getElementById("email-input").addEventListener("keypress", e => {
 				if (e.key === "Enter") submitEmail();
 			});
@@ -285,6 +344,7 @@
 				if (data.dropping) {
 					showScreen("active-screen");
 					canDrop = true;
+					spawnThrowBall();
 				} else {
 					showScreen("waiting-screen");
 					canDrop = false;
@@ -304,8 +364,13 @@
 
 				if (data.dropping) {
 					showScreen("active-screen");
+					spawnThrowBall();
 				} else {
 					showScreen("waiting-screen");
+					if (throwBallEl) {
+						throwBallEl.remove();
+						throwBallEl = null;
+					}
 					document.getElementById("waiting-message").textContent = "Dropping has ended. Thanks for playing!";
 				}
 			});
@@ -320,6 +385,10 @@
 					countdownInterval = null;
 				}
 				canDrop = false;
+				if (throwBallEl) {
+					throwBallEl.remove();
+					throwBallEl = null;
+				}
 				showScreen("waiting-screen");
 				document.getElementById("waiting-message").textContent = "Time's up! Thanks for playing!";
 			});
@@ -327,27 +396,208 @@
 			socket.on("user:dropped", data => {
 				if (data.success) {
 					cooldownEnd = data.nextDropTime;
+					// Spawn a new (greyed-out) ball at bottom during cooldown
+					spawnThrowBall();
 					startCooldown();
 				}
 			});
 
-			function dropBall() {
-				if (!canDrop) return;
+			// ── Throw mechanic ─────────────────────────────────────────
+			const BALL_SIZE = 100; // px diameter at rest
+			const BALL_BOTTOM_OFFSET = 60; // px from bottom edge
+
+			let throwBallEl = null;
+			let isDragging = false;
+			let dragStartX = 0,
+				dragStartY = 0;
+			let dragCurX = 0,
+				dragCurY = 0;
+			let lastVX = 0,
+				lastVY = 0;
+			let lastMoveTime = 0;
+			let prevX = 0,
+				prevY = 0;
+			let throwAnimId = null;
+
+			// Spawn the throw ball at bottom-center
+			const spawnThrowBall = () => {
+				const area = document.getElementById("throw-area");
+				area.innerHTML = "";
+
+				const ball = document.createElement("div");
+				ball.className = "throw-ball";
+				const size = BALL_SIZE;
+				ball.style.width = size + "px";
+				ball.style.height = size + "px";
+
+				const img = document.createElement("img");
+				img.src = gravatarUrl;
+				img.draggable = false;
+				ball.appendChild(img);
+
+				const cx = window.innerWidth / 2;
+				const cy = window.innerHeight - BALL_BOTTOM_OFFSET - size / 2;
+				ball.style.left = cx - size / 2 + "px";
+				ball.style.top = cy - size / 2 + "px";
+
+				area.appendChild(ball);
+				throwBallEl = ball;
+
+				// Pointer events on the ball
+				ball.style.pointerEvents = "auto";
+				ball.addEventListener("pointerdown", onPointerDown);
+			};
+
+			const setBallPos = (x, y) => {
+				const size = parseInt(throwBallEl.style.width);
+				throwBallEl.style.left = x - size / 2 + "px";
+				throwBallEl.style.top = y - size / 2 + "px";
+			};
+
+			const onPointerDown = e => {
+				if (!canDrop || Date.now() < cooldownEnd) return;
+				e.preventDefault();
+
+				isDragging = true;
+				const rect = throwBallEl.getBoundingClientRect();
+				dragStartX = e.clientX;
+				dragStartY = e.clientY;
+				dragCurX = rect.left + rect.width / 2;
+				dragCurY = rect.top + rect.height / 2;
+				prevX = dragCurX;
+				prevY = dragCurY;
+				lastMoveTime = Date.now();
+
+				throwBallEl.setPointerCapture(e.pointerId);
+				throwBallEl.addEventListener("pointermove", onPointerMove);
+				throwBallEl.addEventListener("pointerup", onPointerUp);
+				throwBallEl.addEventListener("pointercancel", onPointerUp);
+			};
+
+			const onPointerMove = e => {
+				if (!isDragging) return;
+				e.preventDefault();
 
 				const now = Date.now();
-				if (now < cooldownEnd) {
-					return;
+				const dt = now - lastMoveTime;
+
+				const newX = dragCurX + (e.clientX - dragStartX);
+				const newY = dragCurY + (e.clientY - dragStartY);
+
+				if (dt > 0) {
+					const currentX = parseFloat(throwBallEl.style.left) + parseInt(throwBallEl.style.width) / 2;
+					const currentY = parseFloat(throwBallEl.style.top) + parseInt(throwBallEl.style.height) / 2;
+					lastVX = ((newX - currentX) / dt) * 16;
+					lastVY = ((newY - currentY) / dt) * 16;
 				}
 
+				// Scale ball slightly smaller while dragging (gives "squish" feel)
+				const dragDist = Math.hypot(e.clientX - dragStartX, e.clientY - dragStartY);
+				const scale = Math.max(0.85, 1 - dragDist / 1200);
+				throwBallEl.style.transform = `scale(${scale})`;
+
+				setBallPos(newX, newY);
+				prevX = newX;
+				prevY = newY;
+				lastMoveTime = now;
+			};
+
+			const onPointerUp = e => {
+				if (!isDragging) return;
+				isDragging = false;
+
+				throwBallEl.removeEventListener("pointermove", onPointerMove);
+				throwBallEl.removeEventListener("pointerup", onPointerUp);
+				throwBallEl.removeEventListener("pointercancel", onPointerUp);
+				throwBallEl.style.transform = "";
+
+				const speed = Math.hypot(lastVX, lastVY);
+				const isThrowUp = lastVY < -2 && speed > 3;
+
+				if (isThrowUp && canDrop && Date.now() >= cooldownEnd) {
+					launchBall(lastVX, lastVY);
+				} else {
+					// Snap back to resting position with spring
+					snapBack();
+				}
+			};
+
+			const launchBall = (vx, vy) => {
+				// Emit to server
 				socket.emit("user:drop", {});
-			}
 
-			function startCooldown() {
-				const btn = document.getElementById("drop-button");
-				const cooldownDisplay = document.getElementById("cooldown-display");
+				// Animate ball flying up and off screen
+				let x = parseFloat(throwBallEl.style.left) + parseInt(throwBallEl.style.width) / 2;
+				let y = parseFloat(throwBallEl.style.top) + parseInt(throwBallEl.style.height) / 2;
+				const gravity = 0.4;
 
-				btn.disabled = true;
-				cooldownDisplay.style.display = "block";
+				// clamp horizontal, boost vertical
+				const launchVX = Math.max(-18, Math.min(18, vx));
+				const launchVY = Math.min(-6, vy * 1.2);
+
+				let animVX = launchVX;
+				let animVY = launchVY;
+
+				throwBallEl.style.pointerEvents = "none";
+
+				const animate = () => {
+					animVY += gravity;
+					x += animVX;
+					y += animVY;
+
+					setBallPos(x, y);
+
+					// Scale up slightly as it launches (satisfying pop)
+					const progress = Math.max(0, -y / window.innerHeight);
+					const scale = 1 + progress * 0.3;
+					throwBallEl.style.transform = `scale(${scale})`;
+
+					if (y < -150) {
+						// Ball is off screen — done
+						throwBallEl.remove();
+						throwBallEl = null;
+						return;
+					}
+					throwAnimId = requestAnimationFrame(animate);
+				};
+				throwAnimId = requestAnimationFrame(animate);
+			};
+
+			const snapBack = () => {
+				const cx = window.innerWidth / 2;
+				const size = parseInt(throwBallEl.style.width);
+				const targetX = cx;
+				const targetY = window.innerHeight - BALL_BOTTOM_OFFSET - size / 2;
+
+				let x = parseFloat(throwBallEl.style.left) + size / 2;
+				let y = parseFloat(throwBallEl.style.top) + size / 2;
+
+				const animate = () => {
+					x += (targetX - x) * 0.2;
+					y += (targetY - y) * 0.2;
+					setBallPos(x, y);
+
+					if (Math.abs(x - targetX) < 0.5 && Math.abs(y - targetY) < 0.5) {
+						setBallPos(targetX, targetY);
+						return;
+					}
+					requestAnimationFrame(animate);
+				};
+				requestAnimationFrame(animate);
+			};
+
+			const dropBall = () => {
+				// kept for socket response handler
+			};
+
+			const startCooldown = () => {
+				if (!throwBallEl) return;
+
+				throwBallEl.classList.add("cooldown-ball");
+				throwBallEl.style.pointerEvents = "none";
+
+				const overlay = document.getElementById("cooldown-overlay");
+				overlay.classList.add("visible");
 
 				const interval = setInterval(() => {
 					const now = Date.now();
@@ -355,15 +605,21 @@
 
 					if (remaining <= 0) {
 						clearInterval(interval);
-						btn.disabled = false;
-						cooldownDisplay.style.display = "none";
+						overlay.classList.remove("visible");
+						if (throwBallEl) {
+							throwBallEl.classList.remove("cooldown-ball");
+							throwBallEl.style.pointerEvents = "auto";
+						} else {
+							spawnThrowBall();
+						}
 					} else {
-						cooldownDisplay.textContent = `Wait ${remaining}s...`;
+						overlay.textContent = `再等 ${remaining}s`;
 					}
 				}, 100);
-			}
+			};
+			// ────────────────────────────────────────────────────────────
 
-			function startCountdownDisplay(seconds) {
+			const startCountdownDisplay = seconds => {
 				let remaining = seconds;
 
 				const updateDisplay = () => {
@@ -399,32 +655,42 @@
 						updateDisplay();
 					}
 				}, 1000);
-			}
+			};
+
+			// Reposition throw ball on resize
+			window.addEventListener("resize", () => {
+				if (throwBallEl && !isDragging) {
+					const size = parseInt(throwBallEl.style.width);
+					const cx = window.innerWidth / 2;
+					const cy = window.innerHeight - BALL_BOTTOM_OFFSET - size / 2;
+					setBallPos(cx, cy);
+				}
+			});
 
 			// Helper functions
-			function showScreen(screenId) {
+			const showScreen = screenId => {
 				document.querySelectorAll(".screen").forEach(screen => {
 					screen.classList.remove("active");
 				});
 				document.getElementById(screenId).classList.add("active");
-			}
+			};
 
-			function showError(elementId, message) {
+			const showError = (elementId, message) => {
 				const errorEl = document.getElementById(elementId);
 				errorEl.textContent = message;
 				errorEl.style.display = "block";
 				setTimeout(() => {
 					errorEl.style.display = "none";
 				}, 3000);
-			}
+			};
 
 			// Simple MD5 implementation for Gravatar
-			function md5(string) {
-				function RotateLeft(lValue, iShiftBits) {
+			const md5 = string => {
+				const RotateLeft = (lValue, iShiftBits) => {
 					return (lValue << iShiftBits) | (lValue >>> (32 - iShiftBits));
-				}
+				};
 
-				function AddUnsigned(lX, lY) {
+				const AddUnsigned = (lX, lY) => {
 					var lX4, lY4, lX8, lY8, lResult;
 					lX8 = lX & 0x80000000;
 					lY8 = lY & 0x80000000;
@@ -443,42 +709,34 @@
 					} else {
 						return lResult ^ lX8 ^ lY8;
 					}
-				}
+				};
 
-				function F(x, y, z) {
-					return (x & y) | (~x & z);
-				}
-				function G(x, y, z) {
-					return (x & z) | (y & ~z);
-				}
-				function H(x, y, z) {
-					return x ^ y ^ z;
-				}
-				function I(x, y, z) {
-					return y ^ (x | ~z);
-				}
+				const F = (x, y, z) => (x & y) | (~x & z);
+				const G = (x, y, z) => (x & z) | (y & ~z);
+				const H = (x, y, z) => x ^ y ^ z;
+				const I = (x, y, z) => y ^ (x | ~z);
 
-				function FF(a, b, c, d, x, s, ac) {
+				const FF = (a, b, c, d, x, s, ac) => {
 					a = AddUnsigned(a, AddUnsigned(AddUnsigned(F(b, c, d), x), ac));
 					return AddUnsigned(RotateLeft(a, s), b);
-				}
+				};
 
-				function GG(a, b, c, d, x, s, ac) {
+				const GG = (a, b, c, d, x, s, ac) => {
 					a = AddUnsigned(a, AddUnsigned(AddUnsigned(G(b, c, d), x), ac));
 					return AddUnsigned(RotateLeft(a, s), b);
-				}
+				};
 
-				function HH(a, b, c, d, x, s, ac) {
+				const HH = (a, b, c, d, x, s, ac) => {
 					a = AddUnsigned(a, AddUnsigned(AddUnsigned(H(b, c, d), x), ac));
 					return AddUnsigned(RotateLeft(a, s), b);
-				}
+				};
 
-				function II(a, b, c, d, x, s, ac) {
+				const II = (a, b, c, d, x, s, ac) => {
 					a = AddUnsigned(a, AddUnsigned(AddUnsigned(I(b, c, d), x), ac));
 					return AddUnsigned(RotateLeft(a, s), b);
-				}
+				};
 
-				function ConvertToWordArray(string) {
+				const ConvertToWordArray = string => {
 					var lWordCount;
 					var lMessageLength = string.length;
 					var lNumberOfWords_temp1 = lMessageLength + 8;
@@ -499,9 +757,9 @@
 					lWordArray[lNumberOfWords - 2] = lMessageLength << 3;
 					lWordArray[lNumberOfWords - 1] = lMessageLength >>> 29;
 					return lWordArray;
-				}
+				};
 
-				function WordToHex(lValue) {
+				const WordToHex = lValue => {
 					var WordToHexValue = "",
 						WordToHexValue_temp = "",
 						lByte,
@@ -512,9 +770,9 @@
 						WordToHexValue = WordToHexValue + WordToHexValue_temp.substr(WordToHexValue_temp.length - 2, 2);
 					}
 					return WordToHexValue;
-				}
+				};
 
-				function Utf8Encode(string) {
+				const Utf8Encode = string => {
 					string = string.replace(/\r\n/g, "\n");
 					var utftext = "";
 					for (var n = 0; n < string.length; n++) {
@@ -531,7 +789,7 @@
 						}
 					}
 					return utftext;
-				}
+				};
 
 				var x = Array();
 				var k, AA, BB, CC, DD, a, b, c, d;
@@ -636,7 +894,7 @@
 
 				var temp = WordToHex(a) + WordToHex(b) + WordToHex(c) + WordToHex(d);
 				return temp.toLowerCase();
-			}
+			};
 		</script>
 	</body>
 </html>

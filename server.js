@@ -37,7 +37,7 @@ let physicsSettings = {
 // Helper function to generate Gravatar URL
 function getGravatarUrl(email) {
 	const hash = crypto.createHash("md5").update(email.toLowerCase().trim()).digest("hex");
-	return `https://www.gravatar.com/avatar/${hash}?s=80&d=identicon`;
+	return `https://www.gravatar.com/avatar/${hash}?s=100&d=identicon`;
 }
 
 // Rate limiting middleware for socket events
@@ -46,12 +46,18 @@ function checkRateLimit(socketId) {
 	const userLimit = userRateLimits.get(socketId);
 
 	if (!userLimit) {
-		userRateLimits.set(socketId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+		userRateLimits.set(socketId, {
+			count: 1,
+			resetTime: now + RATE_LIMIT_WINDOW
+		});
 		return true;
 	}
 
 	if (now > userLimit.resetTime) {
-		userRateLimits.set(socketId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+		userRateLimits.set(socketId, {
+			count: 1,
+			resetTime: now + RATE_LIMIT_WINDOW
+		});
 		return true;
 	}
 
@@ -99,15 +105,24 @@ io.on("connection", socket => {
 	socket.on("admin:login", data => {
 		if (data.password === ADMIN_PASSWORD) {
 			socket.join("controllers");
-			socket.join("display");
 			socket.emit("admin:authenticated", { success: true });
 
 			// Send current physics settings
 			socket.emit("physics:update", physicsSettings);
 			console.log("Admin authenticated:", socket.id);
 		} else {
-			socket.emit("admin:authenticated", { success: false, error: "Invalid password" });
+			socket.emit("admin:authenticated", {
+				success: false,
+				error: "Invalid password"
+			});
 		}
+	});
+
+	// Display screen joining (no password required)
+	socket.on("display:join", () => {
+		socket.join("display");
+		socket.emit("physics:update", physicsSettings);
+		console.log("Display joined:", socket.id);
 	});
 
 	// Welcome screen joining
@@ -166,7 +181,9 @@ io.on("connection", socket => {
 
 		// Rate limiting
 		if (!checkRateLimit(socket.id)) {
-			socket.emit("user:error", { error: "Rate limit exceeded. Wait 1 second between drops." });
+			socket.emit("user:error", {
+				error: "Rate limit exceeded. Wait 1 second between drops."
+			});
 			return;
 		}
 
@@ -185,7 +202,10 @@ io.on("connection", socket => {
 
 		// Send only to display room
 		io.to("display").emit("ball:add", ballData);
-		socket.emit("user:dropped", { success: true, nextDropTime: Date.now() + 1000 });
+		socket.emit("user:dropped", {
+			success: true,
+			nextDropTime: Date.now() + 1000
+		});
 
 		console.log("Ball dropped by:", socket.data.email);
 	});
@@ -217,8 +237,12 @@ io.on("connection", socket => {
 		physicsSettings.dropping = data.dropping;
 
 		// Notify all users and displays
-		io.to("users").emit("dropping:changed", { dropping: physicsSettings.dropping });
-		io.to("display").emit("dropping:changed", { dropping: physicsSettings.dropping });
+		io.to("users").emit("dropping:changed", {
+			dropping: physicsSettings.dropping
+		});
+		io.to("display").emit("dropping:changed", {
+			dropping: physicsSettings.dropping
+		});
 		console.log("Dropping toggled:", physicsSettings.dropping);
 	});
 
@@ -258,6 +282,15 @@ io.on("connection", socket => {
 		// Tell display to remove floor and reset
 		io.to("display").emit("world:reset");
 		console.log("World reset triggered");
+	});
+
+	socket.on("admin:forceAutoFill", () => {
+		if (!socket.rooms.has("controllers")) {
+			return;
+		}
+
+		io.to("display").emit("autofill:start");
+		console.log("Auto-fill triggered");
 	});
 
 	socket.on("disconnect", () => {
