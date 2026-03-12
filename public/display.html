@@ -109,6 +109,7 @@
 			let ground, leftWall, rightWall;
 			let balls = [];
 			let ballSize = 40;
+			let physicsSettings = { gravity: 1, elasticity: 0.8 };
 
 			const { Engine, Render, Runner, Bodies, Composite } = Matter;
 
@@ -203,9 +204,11 @@
 
 				if (settings.gravity !== undefined) {
 					engine.gravity.y = settings.gravity;
+					physicsSettings.gravity = settings.gravity;
 				}
 
 				if (settings.elasticity !== undefined) {
+					physicsSettings.elasticity = settings.elasticity;
 					balls.forEach(ball => {
 						ball.restitution = settings.elasticity;
 					});
@@ -270,7 +273,7 @@
 
 				const interval = 2000 / ballsToAdd;
 				let added = 0;
-				const elasticity = parseFloat(document.getElementById("elasticity-val")?.value ?? 0.8);
+				const elasticity = engine ? (physicsSettings ? physicsSettings.elasticity : 0.8) : 0.8;
 
 				const fillInterval = setInterval(() => {
 					if (added >= ballsToAdd) {
@@ -283,7 +286,7 @@
 					const color = autofillColors[Math.floor(Math.random() * autofillColors.length)];
 
 					const ball = Bodies.circle(x, -50, radius, {
-						restitution: 0.8,
+						restitution: elasticity,
 						friction: 0.001,
 						density: 0.001,
 						render: {

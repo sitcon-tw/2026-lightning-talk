@@ -280,9 +280,7 @@
 
 			<!-- Active Screen -->
 			<div id="active-screen" class="screen">
-				<h1>Drop Your Ball!</h1>
-				<img id="avatar-active" class="avatar" alt="Your avatar" />
-				<p id="throw-info">往上滑丟出球！</p>
+				<p id="throw-info" style="margin-top: 40px; opacity: 0.8">往上滑丟出球！</p>
 				<div id="throw-area"></div>
 				<div id="cooldown-overlay"></div>
 				<div id="timer-display" class="timer" style="display: none"></div>
@@ -339,7 +337,6 @@
 			socket.on("user:joined", data => {
 				gravatarUrl = data.gravatarUrl;
 				document.getElementById("avatar-display").src = gravatarUrl;
-				document.getElementById("avatar-active").src = gravatarUrl;
 
 				if (data.dropping) {
 					showScreen("active-screen");
@@ -364,7 +361,7 @@
 
 				if (data.dropping) {
 					showScreen("active-screen");
-					spawnThrowBall();
+					if (!throwBallEl) spawnThrowBall();
 				} else {
 					showScreen("waiting-screen");
 					if (throwBallEl) {
@@ -396,8 +393,6 @@
 			socket.on("user:dropped", data => {
 				if (data.success) {
 					cooldownEnd = data.nextDropTime;
-					// Spawn a new (greyed-out) ball at bottom during cooldown
-					spawnThrowBall();
 					startCooldown();
 				}
 			});
@@ -538,24 +533,28 @@
 				let animVX = launchVX;
 				let animVY = launchVY;
 
-				throwBallEl.style.pointerEvents = "none";
+				const flyingBall = throwBallEl;
+				throwBallEl = null;
+				flyingBall.style.pointerEvents = "none";
 
 				const animate = () => {
 					animVY += gravity;
 					x += animVX;
 					y += animVY;
 
-					setBallPos(x, y);
+					const size = parseInt(flyingBall.style.width);
+					flyingBall.style.left = x - size / 2 + "px";
+					flyingBall.style.top = y - size / 2 + "px";
 
 					// Scale up slightly as it launches (satisfying pop)
 					const progress = Math.max(0, -y / window.innerHeight);
 					const scale = 1 + progress * 0.3;
-					throwBallEl.style.transform = `scale(${scale})`;
+					flyingBall.style.transform = `scale(${scale})`;
 
 					if (y < -150) {
-						// Ball is off screen — done
-						throwBallEl.remove();
-						throwBallEl = null;
+						flyingBall.remove();
+						// Spawn next ball rolling up from bottom after cooldown
+						rollUpBall();
 						return;
 					}
 					throwAnimId = requestAnimationFrame(animate);
@@ -590,12 +589,45 @@
 				// kept for socket response handler
 			};
 
+			// Roll a new ball up from below the screen into resting position
+			const rollUpBall = () => {
+				const area = document.getElementById("throw-area");
+				const size = BALL_SIZE;
+				const cx = window.innerWidth / 2;
+				const restY = window.innerHeight - BALL_BOTTOM_OFFSET - size / 2;
+				const startY = window.innerHeight + size;
+
+				const ball = document.createElement("div");
+				ball.className = "throw-ball cooldown-ball";
+				ball.style.width = size + "px";
+				ball.style.height = size + "px";
+				ball.style.pointerEvents = "none";
+
+				const img = document.createElement("img");
+				img.src = gravatarUrl;
+				img.draggable = false;
+				ball.appendChild(img);
+
+				ball.style.left = cx - size / 2 + "px";
+				ball.style.top = startY - size / 2 + "px";
+				area.appendChild(ball);
+				throwBallEl = ball;
+
+				// Spring animation up to resting position
+				let y = startY;
+				const rollUp = () => {
+					y += (restY - y) * 0.18;
+					ball.style.top = y - size / 2 + "px";
+					if (Math.abs(y - restY) > 0.5) {
+						requestAnimationFrame(rollUp);
+					} else {
+						ball.style.top = restY - size / 2 + "px";
+					}
+				};
+				requestAnimationFrame(rollUp);
+			};
+
 			const startCooldown = () => {
-				if (!throwBallEl) return;
-
-				throwBallEl.classList.add("cooldown-ball");
-				throwBallEl.style.pointerEvents = "none";
-
 				const overlay = document.getElementById("cooldown-overlay");
 				overlay.classList.add("visible");
 
@@ -606,11 +638,11 @@
 					if (remaining <= 0) {
 						clearInterval(interval);
 						overlay.classList.remove("visible");
+						// Enable the ball that rolled up
 						if (throwBallEl) {
 							throwBallEl.classList.remove("cooldown-ball");
 							throwBallEl.style.pointerEvents = "auto";
-						} else {
-							spawnThrowBall();
+							throwBallEl.addEventListener("pointerdown", onPointerDown);
 						}
 					} else {
 						overlay.textContent = `再等 ${remaining}s`;

@@ -13,7 +13,7 @@ const io = new Server(httpServer, {
 	}
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 80;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 
 // Serve static files
@@ -305,7 +305,7 @@ io.on("connection", socket => {
 	});
 });
 
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, "0.0.0.0", () => {
 	console.log(`Server running on http://localhost:${PORT}`);
 	console.log(`Admin password: ${ADMIN_PASSWORD}`);
 });
