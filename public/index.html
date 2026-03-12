@@ -5,6 +5,7 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>⚡ Lightning Talk - SITCON 2026</title>
 		<script src="/socket.io/socket.io.js"></script>
+		<meta name="theme-color" content="#010121" />
 		<style>
 			* {
 				margin: 0;
@@ -14,12 +15,17 @@
 
 			body {
 				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+				background-color: #010121;
 				background: linear-gradient(12deg, #271803 0%, #e8a53e 54.33%, #a8762d 100%);
-				min-height: 100vh;
+				min-height: 150vh;
+				min-height: 150svh;
+				padding-bottom: 50vh;
+				padding-bottom: 50svh;
 				display: flex;
 				justify-content: center;
 				align-items: center;
 				color: white;
+				overflow: hidden;
 			}
 
 			.container {
@@ -353,7 +359,7 @@
 			});
 
 			socket.on("user:error", data => {
-				alert(data.error);
+				// silently ignore server-side errors (e.g. rate limit, too-soon drop)
 			});
 
 			socket.on("dropping:changed", data => {
@@ -508,27 +514,48 @@
 
 				const speed = Math.hypot(lastVX, lastVY);
 				const isThrowUp = lastVY < -2 && speed > 3;
+				const totalDrag = Math.hypot(e.clientX - dragStartX, e.clientY - dragStartY);
+				const isTap = totalDrag < 10;
 
-				if (isThrowUp && canDrop && Date.now() >= cooldownEnd) {
-					launchBall(lastVX, lastVY);
+				if ((isTap || isThrowUp) && canDrop && Date.now() >= cooldownEnd) {
+					// Tap: launch straight up with a fixed velocity
+					const vx = isTap ? 0 : lastVX;
+					const vy = isTap ? -10 : lastVY;
+					launchBall(vx, vy);
 				} else {
-					// Snap back to resting position with spring
-					snapBack();
+					// Not thrown high enough — grey out the ball briefly and block dragging
+					const ball = throwBallEl;
+					snapBack(ball);
+					if (ball && canDrop && Date.now() >= cooldownEnd) {
+						ball.classList.add("cooldown-ball");
+						ball.style.pointerEvents = "none";
+						setTimeout(() => {
+							if (ball && ball.parentNode) {
+								ball.classList.remove("cooldown-ball");
+								ball.style.pointerEvents = "auto";
+								ball.removeEventListener("pointerdown", onPointerDown);
+								ball.addEventListener("pointerdown", onPointerDown);
+							}
+						}, 800);
+					}
 				}
 			};
 
 			const launchBall = (vx, vy) => {
+				// Vibrate on throw
+				if (navigator.vibrate) navigator.vibrate(80);
+
 				// Emit to server
 				socket.emit("user:drop", {});
 
 				// Animate ball flying up and off screen
 				let x = parseFloat(throwBallEl.style.left) + parseInt(throwBallEl.style.width) / 2;
 				let y = parseFloat(throwBallEl.style.top) + parseInt(throwBallEl.style.height) / 2;
-				const gravity = 0.4;
+				const gravity = 0.18;
 
-				// clamp horizontal, boost vertical
-				const launchVX = Math.max(-18, Math.min(18, vx));
-				const launchVY = Math.min(-6, vy * 1.2);
+				// clamp horizontal, slow down vertical for ~0.8s flight
+				const launchVX = Math.max(-8, Math.min(8, vx * 0.45));
+				const launchVY = Math.min(-3, vy * 0.55);
 
 				let animVX = launchVX;
 				let animVY = launchVY;
@@ -551,7 +578,7 @@
 					const scale = 1 + progress * 0.3;
 					flyingBall.style.transform = `scale(${scale})`;
 
-					if (y < -150 || x < -150 || x > window.innerWidth + 150) {
+					if (y < -150 || x < -150 || x > window.innerWidth + 150 || y > window.innerHeight + 150) {
 						flyingBall.remove();
 						// Spawn next ball rolling up from bottom after cooldown
 						rollUpBall();
@@ -562,22 +589,28 @@
 				throwAnimId = requestAnimationFrame(animate);
 			};
 
-			const snapBack = () => {
+			const snapBack = ball => {
+				ball = ball || throwBallEl;
+				if (!ball) return;
 				const cx = window.innerWidth / 2;
-				const size = parseInt(throwBallEl.style.width);
+				const size = parseInt(ball.style.width);
 				const targetX = cx;
 				const targetY = window.innerHeight - BALL_BOTTOM_OFFSET - size / 2;
 
-				let x = parseFloat(throwBallEl.style.left) + size / 2;
-				let y = parseFloat(throwBallEl.style.top) + size / 2;
+				let x = parseFloat(ball.style.left) + size / 2;
+				let y = parseFloat(ball.style.top) + size / 2;
 
 				const animate = () => {
+					if (!ball.parentNode) return;
 					x += (targetX - x) * 0.2;
 					y += (targetY - y) * 0.2;
-					setBallPos(x, y);
+					const sz = parseInt(ball.style.width);
+					ball.style.left = x - sz / 2 + "px";
+					ball.style.top = y - sz / 2 + "px";
 
 					if (Math.abs(x - targetX) < 0.5 && Math.abs(y - targetY) < 0.5) {
-						setBallPos(targetX, targetY);
+						ball.style.left = targetX - sz / 2 + "px";
+						ball.style.top = targetY - sz / 2 + "px";
 						return;
 					}
 					requestAnimationFrame(animate);
@@ -622,6 +655,13 @@
 						requestAnimationFrame(rollUp);
 					} else {
 						ball.style.top = restY - size / 2 + "px";
+						// If cooldown is already over by the time the ball arrives, enable it now
+						if (Date.now() >= cooldownEnd) {
+							ball.classList.remove("cooldown-ball");
+							ball.style.pointerEvents = "auto";
+							ball.addEventListener("pointerdown", onPointerDown);
+						}
+						// Otherwise startCooldown's interval will enable it when the time comes
 					}
 				};
 				requestAnimationFrame(rollUp);
@@ -638,10 +678,11 @@
 					if (remaining <= 0) {
 						clearInterval(interval);
 						overlay.classList.remove("visible");
-						// Enable the ball that rolled up
+						// Enable the ball that rolled up (remove first to avoid duplicate listeners)
 						if (throwBallEl) {
 							throwBallEl.classList.remove("cooldown-ball");
 							throwBallEl.style.pointerEvents = "auto";
+							throwBallEl.removeEventListener("pointerdown", onPointerDown);
 							throwBallEl.addEventListener("pointerdown", onPointerDown);
 						}
 					} else {
@@ -668,7 +709,7 @@
 					waitingDisplay.style.display = "block";
 					activeDisplay.style.display = "block";
 
-					document.getElementById("waiting-message").textContent = "Game starting in...";
+					document.getElementById("waiting-message").textContent = "議程結束倒數中...";
 				};
 
 				updateDisplay();

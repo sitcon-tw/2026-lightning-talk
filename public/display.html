@@ -3,9 +3,10 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Ball Display</title>
+		<title>⚡💻 Lightning Talk Display - SITCON 2026</title>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 		<script src="/socket.io/socket.io.js"></script>
+		<meta name="theme-color" content="#010121" />
 		<style>
 			* {
 				margin: 0;
@@ -111,7 +112,7 @@
 			let ballSize = 40;
 			let physicsSettings = { gravity: 1, elasticity: 0.8 };
 
-			const { Engine, Render, Runner, Bodies, Composite } = Matter;
+			const { Engine, Render, Runner, Bodies, Composite, Events } = Matter;
 
 			// Initialize Matter.js immediately (no login needed)
 			const initPhysics = () => {
@@ -148,6 +149,41 @@
 				});
 
 				Composite.add(engine.world, [ground, leftWall, rightWall]);
+
+				// Cache for avatar images
+				const imageCache = new Map();
+				const getImage = url => {
+					if (imageCache.has(url)) return imageCache.get(url);
+					const img = new Image();
+					img.crossOrigin = "anonymous";
+					img.src = url;
+					imageCache.set(url, img);
+					return img;
+				};
+
+				// Draw circular avatars on top of each ball after every render frame
+				Events.on(render, "afterRender", () => {
+					const ctx = render.context;
+					for (const ball of balls) {
+						if (!ball._gravatarUrl) continue;
+						const img = getImage(ball._gravatarUrl);
+						if (!img.complete || img.naturalWidth === 0) continue;
+
+						const { x, y } = ball.position;
+						const r = ball.circleRadius || ballSize;
+						const angle = ball.angle;
+
+						ctx.save();
+						ctx.translate(x, y);
+						ctx.rotate(angle);
+						ctx.beginPath();
+						ctx.arc(0, 0, r, 0, Math.PI * 2);
+						ctx.closePath();
+						ctx.clip();
+						ctx.drawImage(img, -r, -r, r * 2, r * 2);
+						ctx.restore();
+					}
+				});
 
 				Render.run(render);
 				runner = Runner.create();
@@ -188,11 +224,12 @@
 					friction: 0.001,
 					density: 0.001,
 					render: {
-						fillStyle: data.color,
-						strokeStyle: "#fff",
-						lineWidth: 3
+						fillStyle: "transparent",
+						strokeStyle: "transparent",
+						lineWidth: 0
 					}
 				});
+				ball._gravatarUrl = data.gravatarUrl;
 
 				Composite.add(engine.world, ball);
 				balls.push(ball);
