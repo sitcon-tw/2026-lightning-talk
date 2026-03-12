@@ -204,8 +204,10 @@
 			};
 
 			const calculateBallParams = () => {
-				const totalBalls = Math.floor((window.innerWidth * window.innerHeight) / ballSize / ballSize);
-				return { radius: ballSize, count: totalBalls };
+				// Hexagonal packing efficiency ~0.9065, use 0.85 for comfort margin
+				const r = ballSize;
+				const maxBalls = Math.floor(((window.innerWidth * window.innerHeight) / (Math.PI * r * r)) * 0.85);
+				return { radius: r, count: maxBalls };
 			};
 
 			// Socket events
@@ -214,6 +216,10 @@
 			});
 
 			socket.on("ball:add", data => {
+				// Enforce ball cap — ignore if screen is full
+				const { count: maxBalls } = calculateBallParams();
+				if (balls.length >= maxBalls) return;
+
 				const x = Math.random() * (window.innerWidth - 200) + 100;
 				const y = -50;
 				const radius = ballSize;
