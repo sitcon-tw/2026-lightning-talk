@@ -23,12 +23,12 @@
 			body {
 				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 				overflow: hidden;
-				background: #00ff00;
+				background: transparent;
 				transition: background 0.3s;
 			}
 
-			body.transparent {
-				background: transparent;
+			body.greenscreen {
+				background: #00ff00;
 			}
 
 			#canvas-container {
@@ -82,10 +82,6 @@
 				font-size: 12px;
 				cursor: pointer;
 				z-index: 1000;
-			}
-
-			.hidden-ui #bg-toggle-btn {
-				display: none !important;
 			}
 		</style>
 		<!-- Google Tag Manager -->
@@ -284,20 +280,20 @@
 			});
 
 			socket.on("dropping:changed", data => {
-				document.getElementById("status").textContent = data.dropping ? "Dropping Enabled" : "Dropping Disabled";
+				document.getElementById("status").textContent = data.dropping ? "丟球中" : "目前禁止丟球";
 			});
 
 			socket.on("countdown:start", data => {
 				let remaining = data.seconds;
-				document.getElementById("status").textContent = `Countdown: ${remaining}s`;
+				document.getElementById("status").textContent = `倒數：${remaining} 秒`;
 
 				const interval = setInterval(() => {
 					remaining--;
 					if (remaining <= 0) {
 						clearInterval(interval);
-						document.getElementById("status").textContent = "Countdown Ended";
+						document.getElementById("status").textContent = "倒數結束！";
 					} else {
-						document.getElementById("status").textContent = `Countdown: ${remaining}s`;
+						document.getElementById("status").textContent = `倒數：${remaining} 秒`;
 					}
 				}, 1000);
 			});
@@ -328,11 +324,11 @@
 				const ballsToAdd = Math.max(0, targetCount - balls.length);
 
 				if (ballsToAdd === 0) {
-					document.getElementById("status").textContent = "Already filled!";
+					document.getElementById("status").textContent = "畫面已經滿了！";
 					return;
 				}
 
-				document.getElementById("status").textContent = `Auto-filling ${ballsToAdd} balls...`;
+				document.getElementById("status").textContent = `自動填充 ${ballsToAdd} 顆球...`;
 
 				const interval = 2000 / ballsToAdd;
 				let added = 0;
@@ -341,7 +337,7 @@
 				const fillInterval = setInterval(() => {
 					if (added >= ballsToAdd) {
 						clearInterval(fillInterval);
-						document.getElementById("status").textContent = "Auto-fill Complete";
+						document.getElementById("status").textContent = "自動填充完成！";
 						return;
 					}
 
@@ -367,10 +363,14 @@
 			});
 
 			// Toggle background (chroma key green / transparent)
-			let isTransparent = false;
+			let isGreenscreen = false;
+			const updateBgToggleBtn = () => {
+				document.getElementById("bg-toggle-btn").textContent = isGreenscreen ? "切換透明背景" : "切換綠幕背景";
+			};
 			const toggleBackground = () => {
-				isTransparent = !isTransparent;
-				document.body.classList.toggle("transparent", isTransparent);
+				isGreenscreen = !isGreenscreen;
+				document.body.classList.toggle("greenscreen", isGreenscreen);
+				updateBgToggleBtn();
 			};
 
 			document.getElementById("bg-toggle-btn").addEventListener("click", toggleBackground);
@@ -383,6 +383,17 @@
 			document.addEventListener("keydown", e => {
 				if (e.key === "h" || e.key === "H") toggleUI();
 			});
+
+			// URL params: ?hide=true  → auto-hide UI on load
+			//             ?mode=1     → transparent (default)
+			//             ?mode=2     → green screen
+			const params = new URLSearchParams(location.search);
+			if (params.get("hide") === "true") document.body.classList.add("hidden-ui");
+			if (params.get("mode") === "2") {
+				isGreenscreen = true;
+				document.body.classList.add("greenscreen");
+			}
+			updateBgToggleBtn();
 
 			// Window resize
 			window.addEventListener("resize", () => {

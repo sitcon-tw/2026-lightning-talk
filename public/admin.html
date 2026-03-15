@@ -532,15 +532,15 @@
 				const btn = document.getElementById("toggle-dropping");
 
 				if (isDropping) {
-					btn.textContent = "Stop Ball Dropping";
+					btn.textContent = "停止丟球";
 					btn.classList.remove("btn-success");
 					btn.classList.add("btn-active");
-					document.getElementById("status").textContent = "Dropping Enabled";
+					document.getElementById("status").textContent = "丟球中";
 				} else {
-					btn.textContent = "Allow Ball Dropping";
+					btn.textContent = "允許丟球";
 					btn.classList.remove("btn-active");
 					btn.classList.add("btn-success");
-					document.getElementById("status").textContent = "Dropping Disabled";
+					document.getElementById("status").textContent = "目前禁止丟球";
 				}
 
 				socket.emit("admin:toggleDropping", { dropping: isDropping });
@@ -590,15 +590,15 @@
 				const btn = document.getElementById("toggle-dropping");
 
 				if (isDropping) {
-					btn.textContent = "Stop Ball Dropping";
+					btn.textContent = "停止丟球";
 					btn.classList.remove("btn-success");
 					btn.classList.add("btn-active");
-					document.getElementById("status").textContent = "Dropping Enabled";
+					document.getElementById("status").textContent = "丟球中";
 				} else {
-					btn.textContent = "Allow Ball Dropping";
+					btn.textContent = "允許丟球";
 					btn.classList.remove("btn-active");
 					btn.classList.add("btn-success");
-					document.getElementById("status").textContent = "Dropping Disabled";
+					document.getElementById("status").textContent = "目前禁止丟球";
 				}
 			});
 
