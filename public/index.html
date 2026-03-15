@@ -3,9 +3,15 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>⚡ Lightning Talk - SITCON 2026</title>
+		<title>Lightning Talk - SITCON 2026</title>
 		<script src="/socket.io/socket.io.js"></script>
 		<meta name="theme-color" content="#010121" />
+		<link rel="icon" type="image/png" href="/icon/favicon-96x96.png" sizes="96x96" />
+		<link rel="icon" type="image/svg+xml" href="/icon/favicon.svg" />
+		<link rel="shortcut icon" href="/icon/favicon.ico" />
+		<link rel="apple-touch-icon" sizes="180x180" href="/icon/apple-touch-icon.png" />
+		<meta name="apple-mobile-web-app-title" content="SITCON 2026 閃電講" />
+		<link rel="manifest" href="/icon/site.webmanifest" />
 		<style>
 			* {
 				margin: 0;
@@ -17,10 +23,8 @@
 				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 				background-color: #010121;
 				background: linear-gradient(12deg, #271803 0%, #e8a53e 54.33%, #a8762d 100%);
-				min-height: 150vh;
-				min-height: 150svh;
-				padding-bottom: 50vh;
-				padding-bottom: 50svh;
+				min-height: 100vh;
+				min-height: 100svh;
 				display: flex;
 				justify-content: center;
 				align-items: center;
@@ -438,15 +442,15 @@
 
 			let throwBallEl = null;
 			let isDragging = false;
-			let dragStartX = 0,
-				dragStartY = 0;
-			let dragCurX = 0,
-				dragCurY = 0;
+			let lastPointerX = 0,
+				lastPointerY = 0;
+			let ballCurX = 0,
+				ballCurY = 0;
+			let ballStartX = 0,
+				ballStartY = 0;
 			let lastVX = 0,
 				lastVY = 0;
 			let lastMoveTime = 0;
-			let prevX = 0,
-				prevY = 0;
 			let throwAnimId = null;
 
 			// Spawn the throw ball at bottom-center
@@ -490,12 +494,14 @@
 
 				isDragging = true;
 				const rect = throwBallEl.getBoundingClientRect();
-				dragStartX = e.clientX;
-				dragStartY = e.clientY;
-				dragCurX = rect.left + rect.width / 2;
-				dragCurY = rect.top + rect.height / 2;
-				prevX = dragCurX;
-				prevY = dragCurY;
+				ballCurX = rect.left + rect.width / 2;
+				ballCurY = rect.top + rect.height / 2;
+				ballStartX = ballCurX;
+				ballStartY = ballCurY;
+				lastPointerX = e.clientX;
+				lastPointerY = e.clientY;
+				lastVX = 0;
+				lastVY = 0;
 				lastMoveTime = Date.now();
 
 				throwBallEl.setPointerCapture(e.pointerId);
@@ -511,25 +517,26 @@
 				const now = Date.now();
 				const dt = now - lastMoveTime;
 
-				const newX = dragCurX + (e.clientX - dragStartX);
-				const newY = dragCurY + (e.clientY - dragStartY);
+				const dx = e.clientX - lastPointerX;
+				const dy = e.clientY - lastPointerY;
+				ballCurX += dx;
+				ballCurY += dy;
 
 				if (dt > 0) {
-					const currentX = parseFloat(throwBallEl.style.left) + parseInt(throwBallEl.style.width) / 2;
-					const currentY = parseFloat(throwBallEl.style.top) + parseInt(throwBallEl.style.height) / 2;
-					lastVX = ((newX - currentX) / dt) * 16;
-					lastVY = ((newY - currentY) / dt) * 16;
+					lastVX = (dx / dt) * 16;
+					lastVY = (dy / dt) * 16;
 				}
 
+				lastPointerX = e.clientX;
+				lastPointerY = e.clientY;
+				lastMoveTime = now;
+
 				// Scale ball slightly smaller while dragging (gives "squish" feel)
-				const dragDist = Math.hypot(e.clientX - dragStartX, e.clientY - dragStartY);
+				const dragDist = Math.hypot(ballCurX - ballStartX, ballCurY - ballStartY);
 				const scale = Math.max(0.85, 1 - dragDist / 1200);
 				throwBallEl.style.transform = `scale(${scale})`;
 
-				setBallPos(newX, newY);
-				prevX = newX;
-				prevY = newY;
-				lastMoveTime = now;
+				setBallPos(ballCurX, ballCurY);
 			};
 
 			const onPointerUp = e => {
@@ -543,7 +550,7 @@
 
 				const speed = Math.hypot(lastVX, lastVY);
 				const isThrowUp = lastVY < -2 && speed > 3;
-				const totalDrag = Math.hypot(e.clientX - dragStartX, e.clientY - dragStartY);
+				const totalDrag = Math.hypot(ballCurX - ballStartX, ballCurY - ballStartY);
 				const isTap = totalDrag < 10;
 
 				if ((isTap || isThrowUp) && canDrop && Date.now() >= cooldownEnd) {
@@ -552,21 +559,19 @@
 					const vy = isTap ? -10 : lastVY;
 					launchBall(vx, vy);
 				} else {
-					// Not thrown high enough — grey out the ball briefly and block dragging
+					// Not thrown hard enough — snap back and briefly lock the ball
+					snapBack(throwBallEl);
 					const ball = throwBallEl;
-					snapBack(ball);
-					if (ball && canDrop && Date.now() >= cooldownEnd) {
-						ball.classList.add("cooldown-ball");
-						ball.style.pointerEvents = "none";
-						setTimeout(() => {
-							if (ball && ball.parentNode) {
-								ball.classList.remove("cooldown-ball");
-								ball.style.pointerEvents = "auto";
-								ball.removeEventListener("pointerdown", onPointerDown);
-								ball.addEventListener("pointerdown", onPointerDown);
-							}
-						}, 800);
-					}
+					ball.classList.add("cooldown-ball");
+					ball.style.pointerEvents = "none";
+					setTimeout(() => {
+						if (ball && ball.parentNode) {
+							ball.classList.remove("cooldown-ball");
+							ball.style.pointerEvents = "auto";
+							ball.removeEventListener("pointerdown", onPointerDown);
+							ball.addEventListener("pointerdown", onPointerDown);
+						}
+					}, 800);
 				}
 			};
 
@@ -578,8 +583,8 @@
 				socket.emit("user:drop", {});
 
 				// Animate ball flying up and off screen
-				let x = parseFloat(throwBallEl.style.left) + parseInt(throwBallEl.style.width) / 2;
-				let y = parseFloat(throwBallEl.style.top) + parseInt(throwBallEl.style.height) / 2;
+				let x = ballCurX;
+				let y = ballCurY;
 				const gravity = 0.18;
 
 				// clamp horizontal, slow down vertical for ~0.8s flight
@@ -621,9 +626,8 @@
 			const snapBack = ball => {
 				ball = ball || throwBallEl;
 				if (!ball) return;
-				const cx = window.innerWidth / 2;
 				const size = parseInt(ball.style.width);
-				const targetX = cx;
+				const targetX = window.innerWidth / 2;
 				const targetY = window.innerHeight - BALL_BOTTOM_OFFSET - size / 2;
 
 				let x = parseFloat(ball.style.left) + size / 2;
@@ -633,22 +637,17 @@
 					if (!ball.parentNode) return;
 					x += (targetX - x) * 0.2;
 					y += (targetY - y) * 0.2;
-					const sz = parseInt(ball.style.width);
-					ball.style.left = x - sz / 2 + "px";
-					ball.style.top = y - sz / 2 + "px";
+					ball.style.left = x - size / 2 + "px";
+					ball.style.top = y - size / 2 + "px";
 
 					if (Math.abs(x - targetX) < 0.5 && Math.abs(y - targetY) < 0.5) {
-						ball.style.left = targetX - sz / 2 + "px";
-						ball.style.top = targetY - sz / 2 + "px";
+						ball.style.left = targetX - size / 2 + "px";
+						ball.style.top = targetY - size / 2 + "px";
 						return;
 					}
 					requestAnimationFrame(animate);
 				};
 				requestAnimationFrame(animate);
-			};
-
-			const dropBall = () => {
-				// kept for socket response handler
 			};
 
 			// Roll a new ball up from below the screen into resting position

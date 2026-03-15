@@ -6,6 +6,12 @@
 		<title>⚙️ Lightning Talk Settings - SITCON 2026</title>
 		<script src="/socket.io/socket.io.js"></script>
 		<meta name="theme-color" content="#010121" />
+		<link rel="icon" type="image/png" href="/icon/favicon-96x96.png" sizes="96x96" />
+		<link rel="icon" type="image/svg+xml" href="/icon/favicon.svg" />
+		<link rel="shortcut icon" href="/icon/favicon.ico" />
+		<link rel="apple-touch-icon" sizes="180x180" href="/icon/apple-touch-icon.png" />
+		<meta name="apple-mobile-web-app-title" content="SITCON 2026 閃電講" />
+		<link rel="manifest" href="/icon/site.webmanifest" />
 		<style>
 			* {
 				margin: 0;
@@ -15,13 +21,16 @@
 
 			body {
 				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-				background-color: #010121;
+				background: linear-gradient(135deg, #48420b 0%, #1a0600 100%);
 				min-height: 100vh;
 				display: flex;
 				justify-content: center;
 				align-items: flex-start;
 				padding: 20px;
+				color: #f0d080;
 			}
+
+			/* ── Login ──────────────────────────────────────────────── */
 
 			#login-screen {
 				position: fixed;
@@ -29,7 +38,7 @@
 				left: 0;
 				width: 100vw;
 				height: 100vh;
-				background: rgba(0, 0, 0, 0.9);
+				background: linear-gradient(135deg, #48420b 0%, #1a0600 100%);
 				display: flex;
 				justify-content: center;
 				align-items: center;
@@ -41,91 +50,135 @@
 			}
 
 			.login-box {
-				background: white;
+				background: linear-gradient(160deg, #1c1200 0%, #2a1d00 100%);
+				border: 1px solid #a07820;
 				padding: 40px;
-				border-radius: 12px;
-				box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+				border-radius: 16px;
+				box-shadow:
+					0 10px 40px rgba(0, 0, 0, 0.6),
+					0 0 60px rgba(200, 140, 20, 0.08);
 				text-align: center;
+				width: 360px;
 			}
 
 			.login-box h1 {
-				margin-bottom: 20px;
-				color: #333;
+				margin-bottom: 24px;
+				color: #e8a53e;
+				font-size: 1.5rem;
+				letter-spacing: 0.05em;
 			}
 
 			.login-box input {
 				width: 100%;
-				padding: 12px;
-				border: 2px solid #ddd;
-				border-radius: 6px;
+				padding: 12px 16px;
+				border: 1.5px solid #6b4a10;
+				border-radius: 8px;
 				font-size: 16px;
 				margin-bottom: 15px;
+				background: rgba(0, 0, 0, 0.4);
+				color: #f0d080;
+				outline: none;
+				transition: border-color 0.2s;
+			}
+
+			.login-box input:focus {
+				border-color: #e8a53e;
 			}
 
 			.login-box button {
 				width: 100%;
 				padding: 12px;
-				background: #667eea;
-				color: white;
+				background: linear-gradient(135deg, #b87320 0%, #e8a53e 100%);
+				color: #010121;
 				border: none;
-				border-radius: 6px;
+				border-radius: 8px;
 				font-size: 16px;
+				font-weight: 700;
 				cursor: pointer;
-				transition: background 0.3s;
+				transition:
+					opacity 0.2s,
+					transform 0.1s;
 			}
 
 			.login-box button:hover {
-				background: #5568d3;
+				opacity: 0.9;
+				transform: translateY(-1px);
 			}
 
 			.error {
-				color: #e74c3c;
+				color: #ff7060;
 				margin-top: 10px;
+				font-size: 0.9em;
 			}
 
-			#control-panel {
-				background: rgba(255, 255, 255, 0.95);
-				padding: 24px;
-				border-radius: 12px;
-				box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+			/* ── Layout ─────────────────────────────────────────────── */
+
+			#main-layout {
+				display: flex;
+				gap: 20px;
 				width: 100%;
-				max-width: 360px;
+				max-width: 900px;
+				align-items: flex-start;
+			}
+
+			/* ── Control Panel (left) ───────────────────────────────── */
+
+			#control-panel {
+				background: linear-gradient(160deg, #1c1200 0%, #2a1d00 100%);
+				border: 1px solid #6b4a10;
+				padding: 24px;
+				border-radius: 16px;
+				box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+				width: 340px;
+				flex-shrink: 0;
 			}
 
 			#control-panel h2 {
-				margin-bottom: 15px;
-				color: #333;
-				font-size: 18px;
+				margin-bottom: 16px;
+				color: #e8a53e;
+				font-size: 1.1rem;
+				letter-spacing: 0.05em;
+				border-bottom: 1px solid #4a3008;
+				padding-bottom: 12px;
 			}
 
 			.control-group {
-				margin-bottom: 15px;
+				margin-bottom: 16px;
 			}
 
 			.control-group label {
 				display: block;
-				margin-bottom: 5px;
-				color: #555;
-				font-size: 14px;
+				margin-bottom: 6px;
+				color: #c8a060;
+				font-size: 13px;
 				font-weight: 500;
 			}
 
 			.control-group input[type="range"] {
 				width: 100%;
+				accent-color: #e8a53e;
 			}
 
 			.control-group input[type="number"] {
 				width: 100%;
-				padding: 8px;
-				border: 2px solid #ddd;
-				border-radius: 6px;
+				padding: 8px 12px;
+				border: 1.5px solid #6b4a10;
+				border-radius: 8px;
 				font-size: 14px;
+				background: rgba(0, 0, 0, 0.35);
+				color: #f0d080;
+				outline: none;
+				transition: border-color 0.2s;
+			}
+
+			.control-group input[type="number"]:focus {
+				border-color: #e8a53e;
 			}
 
 			.control-group .value-display {
 				display: inline-block;
 				margin-left: 10px;
-				color: #667eea;
+				color: #e8a53e;
 				font-weight: bold;
 			}
 
@@ -133,77 +186,192 @@
 				width: 100%;
 				padding: 10px;
 				border: none;
-				border-radius: 6px;
+				border-radius: 8px;
 				font-size: 14px;
 				cursor: pointer;
-				transition: all 0.3s;
+				transition: all 0.2s;
 				font-weight: 600;
-				margin-top: 5px;
+				margin-top: 6px;
 			}
 
 			.btn-primary {
-				background: #667eea;
-				color: white;
+				background: linear-gradient(135deg, #7a5010 0%, #c8820a 100%);
+				color: #fde8a0;
 			}
 
 			.btn-primary:hover {
-				background: #5568d3;
+				opacity: 0.9;
+				transform: translateY(-1px);
 			}
 
 			.btn-success {
-				background: #27ae60;
+				background: linear-gradient(135deg, #1a6b2a 0%, #27ae60 100%);
 				color: white;
 			}
 
 			.btn-success:hover {
-				background: #229954;
+				opacity: 0.9;
+				transform: translateY(-1px);
 			}
 
 			.btn-danger {
-				background: #e74c3c;
+				background: linear-gradient(135deg, #8b1a1a 0%, #e74c3c 100%);
 				color: white;
 			}
 
 			.btn-danger:hover {
-				background: #c0392b;
-			}
-
-			.btn-warning {
-				background: #f39c12;
-				color: white;
-			}
-
-			.btn-warning:hover {
-				background: #e67e22;
+				opacity: 0.9;
+				transform: translateY(-1px);
 			}
 
 			.btn-active {
-				background: #e74c3c;
+				background: linear-gradient(135deg, #8b1a1a 0%, #e74c3c 100%);
 				color: white;
 			}
 
 			#status-bar {
-				background: #2c3e50;
-				color: #ecf0f1;
-				padding: 10px 16px;
+				background: rgba(0, 0, 0, 0.4);
+				border: 1px solid #4a3008;
+				color: #c8a060;
+				padding: 10px 14px;
 				border-radius: 8px;
 				font-size: 13px;
-				margin-bottom: 15px;
+				margin-bottom: 16px;
 			}
 
 			#status-bar div {
 				margin: 3px 0;
 			}
 
-			.control-group input[type="checkbox"] {
-				width: auto;
-				margin-right: 8px;
+			#status-bar strong {
+				color: #e8a53e;
 			}
 
-			.control-group .checkbox-label {
+			/* ── Stats Panel (right) ────────────────────────────────── */
+
+			#stats-panel {
+				flex: 1;
+				min-width: 0;
+				display: flex;
+				flex-direction: column;
+				gap: 16px;
+			}
+
+			.stats-header {
+				background: linear-gradient(160deg, #1c1200 0%, #2a1d00 100%);
+				border: 1px solid #6b4a10;
+				padding: 20px 24px;
+				border-radius: 16px;
+				box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+			}
+
+			.stats-header h2 {
+				color: #e8a53e;
+				font-size: 1.1rem;
+				letter-spacing: 0.05em;
+				margin-bottom: 16px;
+				border-bottom: 1px solid #4a3008;
+				padding-bottom: 12px;
+			}
+
+			.stats-numbers {
+				display: flex;
+				gap: 16px;
+			}
+
+			.stat-card {
+				flex: 1;
+				background: rgba(0, 0, 0, 0.35);
+				border: 1px solid #4a3008;
+				border-radius: 12px;
+				padding: 16px;
+				text-align: center;
+			}
+
+			.stat-card .stat-label {
+				font-size: 12px;
+				color: #9a7840;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				margin-bottom: 8px;
+			}
+
+			.stat-card .stat-value {
+				font-size: 2.8rem;
+				font-weight: 800;
+				line-height: 1;
+				background: linear-gradient(135deg, #e8a53e 0%, #fde080 60%, #c87820 100%);
+				-webkit-background-clip: text;
+				-webkit-text-fill-color: transparent;
+				background-clip: text;
+				letter-spacing: -0.02em;
+			}
+
+			.stat-card .stat-sub {
+				font-size: 11px;
+				color: #6b4a10;
+				margin-top: 6px;
+			}
+
+			/* ── Chart ──────────────────────────────────────────────── */
+
+			.chart-container {
+				background: linear-gradient(160deg, #1c1200 0%, #2a1d00 100%);
+				border: 1px solid #6b4a10;
+				padding: 20px 24px;
+				border-radius: 16px;
+				box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+			}
+
+			.chart-container h3 {
+				color: #e8a53e;
+				font-size: 0.95rem;
+				letter-spacing: 0.05em;
+				margin-bottom: 14px;
+			}
+
+			.chart-legend {
+				display: flex;
+				gap: 20px;
+				margin-bottom: 12px;
+				font-size: 12px;
+			}
+
+			.legend-item {
 				display: flex;
 				align-items: center;
-				cursor: pointer;
+				gap: 6px;
+				color: #9a7840;
+			}
+
+			.legend-dot {
+				width: 10px;
+				height: 10px;
+				border-radius: 50%;
+			}
+
+			.legend-dot.online {
+				background: #e8a53e;
+				box-shadow: 0 0 6px rgba(232, 165, 62, 0.6);
+			}
+
+			.legend-dot.unique {
+				background: #60c8e0;
+				box-shadow: 0 0 6px rgba(96, 200, 224, 0.5);
+			}
+
+			canvas#stats-chart {
+				width: 100%;
+				display: block;
+				border-radius: 8px;
+			}
+
+			/* ── Divider in control panel ───────────────────────────── */
+
+			.section-divider {
+				border: none;
+				border-top: 1px solid #3a2506;
+				margin: 12px 0;
 			}
 		</style>
 		<!-- Google Tag Manager -->
@@ -224,60 +392,101 @@
 	<body>
 		<div id="login-screen">
 			<div class="login-box">
-				<h1>管理員密碼</h1>
-				<input type="password" id="password-input" placeholder="Enter admin password" />
-				<button id="login-btn">Login</button>
+				<h1>管理員登入</h1>
+				<input type="password" id="password-input" placeholder="輸入管理員密碼" />
+				<button id="login-btn">登入</button>
 				<div id="login-error" class="error"></div>
 			</div>
 		</div>
 
-		<div id="control-panel">
-			<h2>⚙️ Control Panel</h2>
+		<div id="main-layout">
+			<!-- Left: Control Panel -->
+			<div id="control-panel">
+				<h2>控制面板</h2>
 
-			<div id="status-bar">
-				<div>
-					<strong>Status:</strong>
-					<span id="status">Ready</span>
+				<div id="status-bar">
+					<div>
+						<strong>狀態：</strong>
+						<span id="status">Ready</span>
+					</div>
+				</div>
+
+				<div class="control-group">
+					<label>
+						地球引力強度：
+						<span class="value-display" id="gravity-value">1.0</span>
+					</label>
+					<input type="range" id="gravity" min="0" max="5" step="0.1" value="1" />
+				</div>
+
+				<div class="control-group">
+					<label>
+						彈力係數：
+						<span class="value-display" id="elasticity-value">0.8</span>
+					</label>
+					<input type="range" id="elasticity" min="0" max="1" step="0.05" value="0.8" />
+				</div>
+
+				<hr class="section-divider" />
+
+				<div class="control-group">
+					<label>倒數計時器 (秒)</label>
+					<input type="number" id="countdown-seconds" min="1" max="3600" value="60" />
+					<button id="start-countdown-btn" class="btn-primary">開始倒數</button>
+				</div>
+
+				<div class="control-group">
+					<button id="toggle-dropping" class="btn-success">立即開放投球</button>
+				</div>
+
+				<div class="control-group">
+					<button id="reset-world-btn" class="btn-danger">清空球</button>
+				</div>
+
+				<hr class="section-divider" />
+
+				<div class="control-group">
+					<label>倒數結束後自動填充 (秒)</label>
+					<input type="number" id="autofill-seconds" min="0" max="60" value="5" />
+				</div>
+
+				<div class="control-group">
+					<button id="force-autofill-btn" class="btn-primary">強制立即填滿</button>
 				</div>
 			</div>
 
-			<div class="control-group">
-				<label>
-					Gravity:
-					<span class="value-display" id="gravity-value">1.0</span>
-				</label>
-				<input type="range" id="gravity" min="0" max="5" step="0.1" value="1" />
-			</div>
+			<!-- Right: Stats Panel -->
+			<div id="stats-panel">
+				<div class="stats-header">
+					<h2>即時人數統計</h2>
+					<div class="stats-numbers">
+						<div class="stat-card">
+							<div class="stat-label">即時在線</div>
+							<div class="stat-value" id="stat-online">0</div>
+							<div class="stat-sub">目前連線中</div>
+						</div>
+						<div class="stat-card">
+							<div class="stat-label">不重複用戶</div>
+							<div class="stat-value" id="stat-unique">0</div>
+							<div class="stat-sub">累計 Email 數</div>
+						</div>
+					</div>
+				</div>
 
-			<div class="control-group">
-				<label>
-					Elasticity:
-					<span class="value-display" id="elasticity-value">0.8</span>
-				</label>
-				<input type="range" id="elasticity" min="0" max="1" step="0.05" value="0.8" />
-			</div>
-
-			<div class="control-group">
-				<label>Countdown Timer (seconds)</label>
-				<input type="number" id="countdown-seconds" min="1" max="3600" value="60" />
-				<button id="start-countdown-btn" class="btn-primary">Start Countdown</button>
-			</div>
-
-			<div class="control-group">
-				<button id="toggle-dropping" class="btn-success">Allow Ball Dropping</button>
-			</div>
-
-			<div class="control-group">
-				<button id="reset-world-btn" class="btn-danger">Reset (Remove Floor)</button>
-			</div>
-
-			<div class="control-group">
-				<label>Auto-fill after countdown ends (seconds)</label>
-				<input type="number" id="autofill-seconds" min="0" max="60" value="5" />
-			</div>
-
-			<div class="control-group">
-				<button id="force-autofill-btn" class="btn-primary">Force Fill Now</button>
+				<div class="chart-container">
+					<h3>人數變化曲線</h3>
+					<div class="chart-legend">
+						<div class="legend-item">
+							<div class="legend-dot online"></div>
+							<span>即時在線</span>
+						</div>
+						<div class="legend-item">
+							<div class="legend-dot unique"></div>
+							<span>不重複用戶</span>
+						</div>
+					</div>
+					<canvas id="stats-chart" height="220"></canvas>
+				</div>
 			</div>
 		</div>
 
@@ -286,7 +495,7 @@
 
 			let isDropping = false;
 
-			// Login functionality
+			// ── Login ────────────────────────────────────────────────────────────
 			const login = () => {
 				const password = document.getElementById("password-input").value;
 				socket.emit("admin:login", { password });
@@ -305,7 +514,7 @@
 				}
 			});
 
-			// Physics controls
+			// ── Physics controls ─────────────────────────────────────────────────
 			document.getElementById("gravity").addEventListener("input", e => {
 				const value = parseFloat(e.target.value);
 				document.getElementById("gravity-value").textContent = value.toFixed(1);
@@ -363,7 +572,7 @@
 
 			document.getElementById("force-autofill-btn").addEventListener("click", forceAutoFill);
 
-			// Socket events
+			// ── Socket events ────────────────────────────────────────────────────
 			socket.on("physics:update", settings => {
 				if (settings.gravity !== undefined) {
 					document.getElementById("gravity").value = settings.gravity;
@@ -423,6 +632,171 @@
 					}
 				}
 			});
+
+			// ── Stats & Chart ─────────────────────────────────────────────────────
+
+			// History: { time, online, unique }[]  (up to MAX_POINTS entries)
+			const MAX_POINTS = 120;
+			const history = [];
+
+			const addDataPoint = (online, unique) => {
+				history.push({ time: Date.now(), online, unique });
+				if (history.length > MAX_POINTS) history.shift();
+			};
+
+			socket.on("admin:stats", data => {
+				document.getElementById("stat-online").textContent = data.online;
+				document.getElementById("stat-unique").textContent = data.unique;
+				addDataPoint(data.online, data.unique);
+				drawChart();
+			});
+
+			// ── Canvas Chart ──────────────────────────────────────────────────────
+
+			const canvas = document.getElementById("stats-chart");
+			const ctx = canvas.getContext("2d");
+
+			// Resize canvas to match CSS width
+			const resizeCanvas = () => {
+				const rect = canvas.getBoundingClientRect();
+				const dpr = window.devicePixelRatio || 1;
+				canvas.width = rect.width * dpr;
+				canvas.height = canvas.height || 220 * dpr;
+				ctx.scale(dpr, dpr);
+				drawChart();
+			};
+
+			const drawChart = () => {
+				const W = canvas.getBoundingClientRect().width;
+				const H = 220;
+				const dpr = window.devicePixelRatio || 1;
+				canvas.width = W * dpr;
+				canvas.height = H * dpr;
+				ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+				const PAD = { top: 16, right: 16, bottom: 32, left: 40 };
+				const plotW = W - PAD.left - PAD.right;
+				const plotH = H - PAD.top - PAD.bottom;
+
+				// Background
+				ctx.fillStyle = "rgba(0,0,0,0.3)";
+				ctx.beginPath();
+				ctx.roundRect(0, 0, W, H, 8);
+				ctx.fill();
+
+				if (history.length < 2) {
+					ctx.fillStyle = "rgba(200,160,96,0.3)";
+					ctx.font = "13px system-ui, sans-serif";
+					ctx.textAlign = "center";
+					ctx.textBaseline = "middle";
+					ctx.fillText("等待資料中...", W / 2, H / 2);
+					return;
+				}
+
+				// Compute Y range
+				const maxVal = Math.max(...history.map(d => Math.max(d.online, d.unique)), 1);
+				const yMax = Math.ceil(maxVal * 1.15) || 1;
+
+				// Grid lines
+				const gridCount = 4;
+				ctx.strokeStyle = "rgba(100,72,16,0.4)";
+				ctx.lineWidth = 1;
+				for (let i = 0; i <= gridCount; i++) {
+					const y = PAD.top + plotH - (i / gridCount) * plotH;
+					ctx.beginPath();
+					ctx.moveTo(PAD.left, y);
+					ctx.lineTo(PAD.left + plotW, y);
+					ctx.stroke();
+
+					// Y labels
+					const label = Math.round((i / gridCount) * yMax);
+					ctx.fillStyle = "rgba(180,140,60,0.7)";
+					ctx.font = "11px system-ui, sans-serif";
+					ctx.textAlign = "right";
+					ctx.textBaseline = "middle";
+					ctx.fillText(label, PAD.left - 6, y);
+				}
+
+				// X axis ticks (time labels — show start and end)
+				const tStart = history[0].time;
+				const tEnd = history[history.length - 1].time;
+				const fmtTime = ts => {
+					const d = new Date(ts);
+					return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}:${d.getSeconds().toString().padStart(2, "0")}`;
+				};
+
+				ctx.fillStyle = "rgba(180,140,60,0.6)";
+				ctx.font = "10px system-ui, sans-serif";
+				ctx.textAlign = "left";
+				ctx.textBaseline = "top";
+				ctx.fillText(fmtTime(tStart), PAD.left, H - PAD.bottom + 6);
+				ctx.textAlign = "right";
+				ctx.fillText(fmtTime(tEnd), PAD.left + plotW, H - PAD.bottom + 6);
+
+				// Helper: map data point index to canvas coordinates
+				const xOf = i => PAD.left + (i / (history.length - 1)) * plotW;
+				const yOf = v => PAD.top + plotH - (v / yMax) * plotH;
+
+				// ── Draw area fill then line ──────────────────────────────────────
+
+				const drawSeries = (key, lineColor, fillColor) => {
+					// Area fill
+					ctx.beginPath();
+					ctx.moveTo(xOf(0), yOf(history[0][key]));
+					for (let i = 1; i < history.length; i++) {
+						const x0 = xOf(i - 1),
+							y0 = yOf(history[i - 1][key]);
+						const x1 = xOf(i),
+							y1 = yOf(history[i][key]);
+						const cpx = (x0 + x1) / 2;
+						ctx.bezierCurveTo(cpx, y0, cpx, y1, x1, y1);
+					}
+					ctx.lineTo(xOf(history.length - 1), PAD.top + plotH);
+					ctx.lineTo(xOf(0), PAD.top + plotH);
+					ctx.closePath();
+					ctx.fillStyle = fillColor;
+					ctx.fill();
+
+					// Line
+					ctx.beginPath();
+					ctx.moveTo(xOf(0), yOf(history[0][key]));
+					for (let i = 1; i < history.length; i++) {
+						const x0 = xOf(i - 1),
+							y0 = yOf(history[i - 1][key]);
+						const x1 = xOf(i),
+							y1 = yOf(history[i][key]);
+						const cpx = (x0 + x1) / 2;
+						ctx.bezierCurveTo(cpx, y0, cpx, y1, x1, y1);
+					}
+					ctx.strokeStyle = lineColor;
+					ctx.lineWidth = 2.5;
+					ctx.lineJoin = "round";
+					ctx.stroke();
+
+					// Dot at latest point
+					const lx = xOf(history.length - 1);
+					const ly = yOf(history[history.length - 1][key]);
+					ctx.beginPath();
+					ctx.arc(lx, ly, 4, 0, Math.PI * 2);
+					ctx.fillStyle = lineColor;
+					ctx.fill();
+				};
+
+				drawSeries("unique", "#60c8e0", "rgba(96,200,224,0.10)");
+				drawSeries("online", "#e8a53e", "rgba(232,165,62,0.15)");
+
+				// Axis borders
+				ctx.strokeStyle = "rgba(100,72,16,0.6)";
+				ctx.lineWidth = 1;
+				ctx.beginPath();
+				ctx.moveTo(PAD.left, PAD.top);
+				ctx.lineTo(PAD.left, PAD.top + plotH);
+				ctx.lineTo(PAD.left + plotW, PAD.top + plotH);
+				ctx.stroke();
+			};
+
+			window.addEventListener("resize", drawChart);
+			drawChart();
 		</script>
 		<!-- Google Tag Manager (noscript) -->
 		<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NPVBCDZ" height="0" width="0" style="display: none; visibility: hidden"></iframe></noscript>

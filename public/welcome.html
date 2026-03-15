@@ -3,11 +3,16 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>⚡ Lightning Talk - SITCON 2026</title>
+		<title>Lightning Talk - SITCON 2026</title>
 		<script src="/socket.io/socket.io.js"></script>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-		<meta color-scheme="dark" />
 		<meta name="theme-color" content="#010121" />
+		<link rel="icon" type="image/png" href="/icon/favicon-96x96.png" sizes="96x96" />
+		<link rel="icon" type="image/svg+xml" href="/icon/favicon.svg" />
+		<link rel="shortcut icon" href="/icon/favicon.ico" />
+		<link rel="apple-touch-icon" sizes="180x180" href="/icon/apple-touch-icon.png" />
+		<meta name="apple-mobile-web-app-title" content="SITCON 2026 閃電講" />
+		<link rel="manifest" href="/icon/site.webmanifest" />
 		<style>
 			* {
 				margin: 0;
@@ -18,7 +23,7 @@
 			body {
 				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 				background-color: #010121;
-				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				background: linear-gradient(12deg, #271803 0%, #e8a53e 54.33%, #a8762d 100%);
 				min-height: 100vh;
 				min-height: 100svh;
 				display: flex;
@@ -110,7 +115,6 @@
 			}
 
 			.stats {
-				margin-top: 50px;
 				font-size: 1.5rem;
 			}
 
@@ -120,7 +124,7 @@
 				gap: 20px;
 				background: rgba(255, 255, 255, 0.2);
 				padding: 20px 40px;
-				border-radius: 50px;
+				border-radius: 16px;
 				backdrop-filter: blur(10px);
 				box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 				margin-top: 20px;
@@ -163,14 +167,6 @@
 				}
 			}
 
-			.footer {
-				position: fixed;
-				bottom: 20px;
-				right: 20px;
-				font-size: 1rem;
-				opacity: 0.7;
-			}
-
 			.instructions {
 				margin-top: 30px;
 				font-size: 1.3rem;
@@ -179,7 +175,7 @@
 			}
 
 			.instructions strong {
-				color: #ffd700;
+				color: #000000;
 			}
 
 			/* 連線狀態指示 */
@@ -251,8 +247,6 @@
 				</div>
 			</div>
 		</div>
-
-		<div class="footer">SITCON 2026</div>
 
 		<script>
 			const socket = io();

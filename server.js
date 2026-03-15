@@ -111,9 +111,15 @@ let physicsSettings = {
 // ── User count (O(1) counter) ─────────────────────────────────────────────────
 
 let userCount = 0;
+const uniqueEmails = new Set(); // tracks unique email addresses ever joined
 
 function broadcastUserCount() {
 	io.to("welcome").emit("users:count", { count: userCount });
+	io.to("controllers").emit("admin:stats", {
+		online: userCount,
+		unique: uniqueEmails.size,
+		timestamp: Date.now()
+	});
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -150,6 +156,11 @@ io.on("connection", socket => {
 			socket.join("controllers");
 			socket.emit("admin:authenticated", { success: true });
 			socket.emit("physics:update", physicsSettings);
+			socket.emit("admin:stats", {
+				online: userCount,
+				unique: uniqueEmails.size,
+				timestamp: Date.now()
+			});
 			console.log("Admin authenticated:", socket.id);
 		} else {
 			recordFailedLogin(ip);
@@ -207,6 +218,7 @@ io.on("connection", socket => {
 		// Only increment if this socket wasn't already counted
 		if (!wasUser) {
 			userCount++;
+			uniqueEmails.add(data.email.toLowerCase().trim());
 			broadcastUserCount();
 		}
 	});
@@ -290,11 +302,16 @@ io.on("connection", socket => {
 		console.log("Auto-fill triggered");
 	});
 
-	socket.on("disconnect", () => {
+	// Use "disconnecting" (not "disconnect") because rooms are still populated at this stage.
+	// By the time "disconnect" fires, socket.rooms has already been cleared.
+	socket.on("disconnecting", () => {
 		if (socket.rooms.has("users")) {
 			userCount = Math.max(0, userCount - 1);
 			setTimeout(() => broadcastUserCount(), 100);
 		}
+	});
+
+	socket.on("disconnect", () => {
 		socketEventLimits.delete(socket.id);
 		console.log("Disconnected:", socket.id);
 	});
