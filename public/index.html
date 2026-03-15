@@ -83,6 +83,13 @@
 				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 			}
 
+			.button-container {
+				display: flex;
+				gap: 1rem;
+				justify-content: center;
+				flex-wrap: wrap;
+			}
+
 			button {
 				padding: 15px 40px;
 				font-size: 18px;
@@ -94,6 +101,12 @@
 				font-weight: 600;
 				transition: all 0.3s;
 				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+			}
+
+			#back-to-email-btn {
+				background: transparent;
+				color: white;
+				border: 2px solid white;
 			}
 
 			button:hover:not(:disabled) {
@@ -258,8 +271,8 @@
 			<!-- Email Entry Screen -->
 			<div id="email-screen" class="screen active">
 				<h1>
-					<span>SITCON 2026</span>
-					⚡ Lightning Talk
+					<span>⚡ SITCON 2026</span>
+					Lightning Talk
 				</h1>
 				<p>請輸入 Email 以繼續</p>
 				<input type="email" id="email-input" placeholder="your@email.com" />
@@ -272,8 +285,10 @@
 				<h1>確認你的頭像</h1>
 				<img id="avatar-preview" class="avatar" alt="Your avatar" />
 				<p id="email-display"></p>
-				<button id="confirm-avatar-btn">看起來很讚！</button>
-				<button id="back-to-email-btn" style="margin-left: 10px; background: transparent; color: white; border: 2px solid white">更改 Email</button>
+				<div class="button-container">
+					<button id="confirm-avatar-btn">看起來很讚！</button>
+					<button id="back-to-email-btn">更改 Email</button>
+				</div>
 			</div>
 
 			<!-- Waiting Screen -->
