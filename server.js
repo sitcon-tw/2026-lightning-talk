@@ -1,41 +1,42 @@
-const express = require("express");
-const { createServer } = require("http");
+// tracing.js must be the first require so OTel patches are applied before any other module loads
+require("./tracing");
+
+const Fastify = require("fastify");
+const fastifyStatic = require("@fastify/static");
 const { Server } = require("socket.io");
 const crypto = require("crypto");
 const path = require("path");
 
-const app = express();
-const httpServer = createServer(app);
+// ── Fastify instance ──────────────────────────────────────────────────────────
 
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "*";
-
-const io = new Server(httpServer, {
-	maxHttpBufferSize: 1e4, // 10KB max payload — emails are tiny
-	cors: {
-		origin: ALLOWED_ORIGIN
-	}
-});
+const fastify = Fastify({ logger: true });
 
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "*";
 
 if (ADMIN_PASSWORD === "admin123") {
-	console.warn("[WARN] ADMIN_PASSWORD is using the default value. Set the ADMIN_PASSWORD environment variable before deploying.");
+	fastify.log.warn("ADMIN_PASSWORD is using the default value. Set the ADMIN_PASSWORD environment variable before deploying.");
 }
 
-// Serve static files
-app.use(express.static(path.join(__dirname, "public")));
+// Serve static files from /public
+fastify.register(fastifyStatic, {
+	root: path.join(__dirname, "public"),
+	prefix: "/"
+});
 
-// ── Rate limiting ────────────────────────────────────────────────────────────
+// ── Socket.IO (attached to Fastify's underlying http.Server) ──────────────────
+// Fastify 5 doesn't have a first-class socket.io plugin; we bind after listen.
 
-// General per-socket rate limit (for drop, join, etc.)
+const io = new Server({
+	maxHttpBufferSize: 1e4, // 10 KB max payload
+	cors: { origin: ALLOWED_ORIGIN }
+});
+
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+
 const socketEventLimits = new Map(); // socketId -> { [event]: { count, resetTime } }
 
-/**
- * Returns true if the event is within its allowed rate.
- * windowMs: rolling window in ms
- * max: max calls per window
- */
 function checkEventRateLimit(socketId, event, windowMs, max) {
 	const now = Date.now();
 	if (!socketEventLimits.has(socketId)) socketEventLimits.set(socketId, {});
@@ -86,7 +87,6 @@ setInterval(
 	() => {
 		const now = Date.now();
 		for (const [socketId, limits] of socketEventLimits.entries()) {
-			// Remove if all events are expired
 			const allExpired = Object.values(limits).every(l => now > l.resetTime + 60000);
 			if (allExpired) socketEventLimits.delete(socketId);
 		}
@@ -98,7 +98,7 @@ setInterval(
 	5 * 60 * 1000
 );
 
-// ── Physics settings ─────────────────────────────────────────────────────────
+// ── Physics settings ──────────────────────────────────────────────────────────
 
 let physicsSettings = {
 	gravity: 1,
@@ -108,10 +108,10 @@ let physicsSettings = {
 	countdownSeconds: 0
 };
 
-// ── User count (O(1) counter) ─────────────────────────────────────────────────
+// ── User count ────────────────────────────────────────────────────────────────
 
 let userCount = 0;
-const uniqueEmails = new Set(); // tracks unique email addresses ever joined
+const uniqueEmails = new Set();
 
 function broadcastUserCount() {
 	io.to("welcome").emit("users:count", { count: userCount });
@@ -122,25 +122,24 @@ function broadcastUserCount() {
 	});
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function getGravatarUrl(email) {
 	const hash = crypto.createHash("md5").update(email.toLowerCase().trim()).digest("hex");
 	return `https://www.gravatar.com/avatar/${hash}?s=100&d=identicon`;
 }
 
-// Basic email format validation (RFC-lite — just needs a local@domain shape)
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{1,63}$/;
 
 function isValidEmail(email) {
 	return typeof email === "string" && email.length <= 254 && EMAIL_RE.test(email);
 }
 
-// ── Socket.IO ────────────────────────────────────────────────────────────────
+// ── Socket.IO event handlers ──────────────────────────────────────────────────
 
 io.on("connection", socket => {
 	const ip = socket.handshake.headers["x-forwarded-for"]?.split(",")[0].trim() || socket.handshake.address;
-	console.log("New connection:", socket.id, "from", ip);
+	fastify.log.info({ socketId: socket.id, ip }, "New connection");
 
 	// Admin authentication
 	socket.on("admin:login", data => {
@@ -161,7 +160,7 @@ io.on("connection", socket => {
 				unique: uniqueEmails.size,
 				timestamp: Date.now()
 			});
-			console.log("Admin authenticated:", socket.id);
+			fastify.log.info({ socketId: socket.id }, "Admin authenticated");
 		} else {
 			recordFailedLogin(ip);
 			socket.emit("admin:authenticated", { success: false, error: "Invalid password" });
@@ -172,14 +171,14 @@ io.on("connection", socket => {
 	socket.on("display:join", () => {
 		socket.join("display");
 		socket.emit("physics:update", physicsSettings);
-		console.log("Display joined:", socket.id);
+		fastify.log.info({ socketId: socket.id }, "Display joined");
 	});
 
 	// Welcome screen joining
 	socket.on("welcome:join", () => {
 		socket.join("welcome");
 		socket.emit("users:count", { count: userCount });
-		console.log("Welcome screen joined:", socket.id);
+		fastify.log.info({ socketId: socket.id }, "Welcome screen joined");
 	});
 
 	// Request user count (rate limited: 5/sec)
@@ -189,7 +188,7 @@ io.on("connection", socket => {
 		socket.emit("users:count", { count: userCount });
 	});
 
-	// User joining (rate limited: 3 attempts per 10 seconds to prevent spam joins)
+	// User joining (rate limited: 3 attempts per 10 seconds)
 	socket.on("user:join", data => {
 		if (!checkEventRateLimit(socket.id, "user:join", 10000, 3)) {
 			socket.emit("user:error", { error: "Too many join attempts." });
@@ -215,7 +214,6 @@ io.on("connection", socket => {
 			countdownActive: physicsSettings.countdownActive
 		});
 
-		// Only increment if this socket wasn't already counted
 		if (!wasUser) {
 			userCount++;
 			uniqueEmails.add(data.email.toLowerCase().trim());
@@ -223,7 +221,7 @@ io.on("connection", socket => {
 		}
 	});
 
-	// User dropping a ball (rate limited: 1/sec, enforced server-side)
+	// User dropping a ball (rate limited: 1/sec)
 	socket.on("user:drop", () => {
 		if (!socket.rooms.has("users")) return;
 		if (!physicsSettings.dropping) {
@@ -266,7 +264,7 @@ io.on("connection", socket => {
 		physicsSettings.dropping = !!data.dropping;
 		io.to("users").emit("dropping:changed", { dropping: physicsSettings.dropping });
 		io.to("display").emit("dropping:changed", { dropping: physicsSettings.dropping });
-		console.log("Dropping toggled:", physicsSettings.dropping);
+		fastify.log.info({ dropping: physicsSettings.dropping }, "Dropping toggled");
 	});
 
 	socket.on("admin:startCountdown", data => {
@@ -277,7 +275,7 @@ io.on("connection", socket => {
 		physicsSettings.countdownSeconds = data.seconds;
 
 		io.emit("countdown:start", { seconds: data.seconds });
-		console.log("Countdown started:", data.seconds);
+		fastify.log.info({ seconds: data.seconds }, "Countdown started");
 
 		setTimeout(() => {
 			if (physicsSettings.countdownActive) {
@@ -293,17 +291,16 @@ io.on("connection", socket => {
 	socket.on("admin:reset", () => {
 		if (!socket.rooms.has("controllers")) return;
 		io.to("display").emit("world:reset");
-		console.log("World reset triggered");
+		fastify.log.info("World reset triggered");
 	});
 
 	socket.on("admin:forceAutoFill", () => {
 		if (!socket.rooms.has("controllers")) return;
 		io.to("display").emit("autofill:start");
-		console.log("Auto-fill triggered");
+		fastify.log.info("Auto-fill triggered");
 	});
 
-	// Use "disconnecting" (not "disconnect") because rooms are still populated at this stage.
-	// By the time "disconnect" fires, socket.rooms has already been cleared.
+	// Use "disconnecting" so socket.rooms is still populated
 	socket.on("disconnecting", () => {
 		if (socket.rooms.has("users")) {
 			userCount = Math.max(0, userCount - 1);
@@ -313,10 +310,18 @@ io.on("connection", socket => {
 
 	socket.on("disconnect", () => {
 		socketEventLimits.delete(socket.id);
-		console.log("Disconnected:", socket.id);
+		fastify.log.info({ socketId: socket.id }, "Disconnected");
 	});
 });
 
-httpServer.listen(PORT, "0.0.0.0", () => {
-	console.log(`Server running on http://localhost:${PORT}`);
+// ── Start ─────────────────────────────────────────────────────────────────────
+
+fastify.listen({ port: PORT, host: "0.0.0.0" }, (err, address) => {
+	if (err) {
+		fastify.log.error(err);
+		process.exit(1);
+	}
+	// Attach Socket.IO to Fastify's underlying http.Server after listen
+	io.attach(fastify.server);
+	fastify.log.info(`Server running on ${address}`);
 });

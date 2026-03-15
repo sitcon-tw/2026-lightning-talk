@@ -97,7 +97,7 @@ pnpm start
 
 ## 技術架構
 
-- **後端**：Node.js + Express + Socket.IO
+- **後端**：Node.js + Fastify + Socket.IO
 - **前端**：Vanilla JS + Matter.js（物理引擎）
 - **即時通訊**：WebSocket（Socket.IO）
 - **頭像**：Gravatar（以 Email MD5 hash 取得）
