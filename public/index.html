@@ -179,6 +179,7 @@
 				position: fixed;
 				inset: 0;
 				pointer-events: none;
+				touch-action: none;
 			}
 
 			#throw-info {
@@ -201,6 +202,9 @@
 				background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
 				transition: box-shadow 0.1s;
 				cursor: grab;
+				touch-action: none;
+				user-select: none;
+				-webkit-user-select: none;
 			}
 
 			.throw-ball img {
@@ -548,8 +552,25 @@
 				throwBallEl.removeEventListener("pointercancel", onPointerUp);
 				throwBallEl.style.transform = "";
 
+				// On pointercancel (e.g. browser scroll takeover), always snap back
+				if (e.type === "pointercancel") {
+					snapBack(throwBallEl);
+					const ball = throwBallEl;
+					ball.classList.add("cooldown-ball");
+					ball.style.pointerEvents = "none";
+					setTimeout(() => {
+						if (ball && ball.parentNode) {
+							ball.classList.remove("cooldown-ball");
+							ball.style.pointerEvents = "auto";
+							ball.removeEventListener("pointerdown", onPointerDown);
+							ball.addEventListener("pointerdown", onPointerDown);
+						}
+					}, 500);
+					return;
+				}
+
 				const speed = Math.hypot(lastVX, lastVY);
-				const isThrowUp = lastVY < -2 && speed > 3;
+				const isThrowUp = lastVY < -1.5 && speed > 2;
 				const totalDrag = Math.hypot(ballCurX - ballStartX, ballCurY - ballStartY);
 				const isTap = totalDrag < 10;
 
@@ -585,11 +606,11 @@
 				// Animate ball flying up and off screen
 				let x = ballCurX;
 				let y = ballCurY;
-				const gravity = 0.18;
+				const gravity = 0.08;
 
 				// clamp horizontal, slow down vertical for ~0.8s flight
-				const launchVX = Math.max(-8, Math.min(8, vx * 0.45));
-				const launchVY = Math.min(-3, vy * 0.55);
+				const launchVX = Math.max(-6, Math.min(6, vx * 0.4));
+				const launchVY = Math.max(-14, Math.min(-5, vy * 0.6));
 
 				let animVX = launchVX;
 				let animVY = launchVY;
