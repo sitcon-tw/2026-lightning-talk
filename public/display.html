@@ -67,7 +67,8 @@
 			}
 
 			.hidden-ui #stats,
-			.hidden-ui #ui-hint {
+			.hidden-ui #ui-hint,
+			.hidden-ui #bg-toggle-btn {
 				display: none !important;
 			}
 
@@ -117,7 +118,7 @@
 
 		<button id="bg-toggle-btn">切換透明／綠幕背景</button>
 
-		<div id="ui-hint">按 H 隱藏 UI</div>
+		<div id="ui-hint">按 H 隱藏 UI（或是網址添加 ?hide=true）</div>
 
 		<script>
 			const socket = io();
