@@ -320,7 +320,7 @@
 			});
 
 			socket.on("autofill:start", data => {
-				const autofillColors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#F7DC6F", "#BB8FCE", "#58D68D", "#F8B739", "#EC7063"];
+				const autofillColors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#F7DC6F", "#BB8FCE", "#F8B739", "#EC7063"]; // "#58D68D",
 				const { radius, count: targetCount } = calculateBallParams();
 				const ballsToAdd = Math.max(0, targetCount - balls.length);
 
