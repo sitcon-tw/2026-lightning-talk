@@ -494,6 +494,20 @@
 			const socket = io();
 
 			let isDropping = false;
+			let countdownInterval = null;
+			let autoFillTimeout = null;
+
+			const clearCountdownInterval = () => {
+				if (!countdownInterval) return;
+				clearInterval(countdownInterval);
+				countdownInterval = null;
+			};
+
+			const clearAutoFillTimeout = () => {
+				if (!autoFillTimeout) return;
+				clearTimeout(autoFillTimeout);
+				autoFillTimeout = null;
+			};
 
 			// ── Login ────────────────────────────────────────────────────────────
 			const login = () => {
@@ -551,6 +565,8 @@
 			const startCountdown = () => {
 				const seconds = parseInt(document.getElementById("countdown-seconds").value);
 				if (seconds > 0 && seconds <= 3600) {
+					clearCountdownInterval();
+					clearAutoFillTimeout();
 					socket.emit("admin:startCountdown", { seconds });
 					document.getElementById("status").textContent = `Countdown: ${seconds}s`;
 				}
@@ -603,13 +619,15 @@
 			});
 
 			socket.on("countdown:start", data => {
+				clearCountdownInterval();
+				clearAutoFillTimeout();
 				let remaining = data.seconds;
 				document.getElementById("status").textContent = `Countdown: ${remaining}s`;
 
-				const interval = setInterval(() => {
+				countdownInterval = setInterval(() => {
 					remaining--;
 					if (remaining <= 0) {
-						clearInterval(interval);
+						clearCountdownInterval();
 						document.getElementById("status").textContent = "Countdown Ended";
 					} else {
 						document.getElementById("status").textContent = `Countdown: ${remaining}s`;
@@ -618,6 +636,8 @@
 			});
 
 			socket.on("countdown:end", () => {
+				clearCountdownInterval();
+				clearAutoFillTimeout();
 				document.getElementById("status").textContent = "Countdown Ended";
 
 				const autoFillDelay = parseInt(document.getElementById("autofill-seconds").value);
@@ -626,11 +646,17 @@
 						socket.emit("admin:forceAutoFill");
 					} else {
 						document.getElementById("status").textContent = `Auto-fill in ${autoFillDelay}s...`;
-						setTimeout(() => {
+						autoFillTimeout = setTimeout(() => {
+							autoFillTimeout = null;
 							socket.emit("admin:forceAutoFill");
 						}, autoFillDelay * 1000);
 					}
 				}
+			});
+
+			socket.on("countdown:cancel", () => {
+				clearCountdownInterval();
+				clearAutoFillTimeout();
 			});
 
 			// ── Stats & Chart ─────────────────────────────────────────────────────

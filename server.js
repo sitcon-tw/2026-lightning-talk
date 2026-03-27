@@ -109,6 +109,7 @@ let physicsSettings = {
 	countdownActive: false,
 	countdownSeconds: 0
 };
+let countdownTimeout = null;
 
 // ── User count ────────────────────────────────────────────────────────────────
 
@@ -132,6 +133,21 @@ function resetCurrentRoundDroppedAvatars() {
 function recordCurrentRoundDroppedAvatar(gravatarUrl) {
 	if (!gravatarUrl) return;
 	currentRoundDroppedAvatars.add(gravatarUrl);
+}
+
+function clearCountdownTimeout() {
+	if (!countdownTimeout) return;
+	clearTimeout(countdownTimeout);
+	countdownTimeout = null;
+}
+
+function cancelCountdown() {
+	if (!physicsSettings.countdownActive) return false;
+	physicsSettings.countdownActive = false;
+	physicsSettings.countdownSeconds = 0;
+	clearCountdownTimeout();
+	io.emit("countdown:cancel");
+	return true;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -274,6 +290,7 @@ io.on("connection", socket => {
 
 	socket.on("admin:toggleDropping", data => {
 		if (!socket.rooms.has("controllers")) return;
+		cancelCountdown();
 		physicsSettings.dropping = !!data.dropping;
 		if (physicsSettings.dropping) resetCurrentRoundDroppedAvatars();
 		io.to("users").emit("dropping:changed", { dropping: physicsSettings.dropping });
@@ -285,6 +302,7 @@ io.on("connection", socket => {
 		if (!socket.rooms.has("controllers")) return;
 		if (typeof data.seconds !== "number" || data.seconds <= 0 || data.seconds > 3600) return;
 
+		clearCountdownTimeout();
 		resetCurrentRoundDroppedAvatars();
 		physicsSettings.countdownActive = true;
 		physicsSettings.countdownSeconds = data.seconds;
@@ -292,10 +310,12 @@ io.on("connection", socket => {
 		io.emit("countdown:start", { seconds: data.seconds });
 		fastify.log.info({ seconds: data.seconds }, "Countdown started");
 
-		setTimeout(() => {
+		countdownTimeout = setTimeout(() => {
 			if (physicsSettings.countdownActive) {
 				physicsSettings.dropping = false;
 				physicsSettings.countdownActive = false;
+				physicsSettings.countdownSeconds = 0;
+				countdownTimeout = null;
 				io.to("users").emit("dropping:changed", { dropping: false });
 				io.to("display").emit("dropping:changed", { dropping: false });
 				io.emit("countdown:end");

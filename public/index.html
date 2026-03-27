@@ -339,6 +339,15 @@
 			let cooldownEnd = 0;
 			let countdownInterval = null;
 
+			const clearCountdownDisplay = () => {
+				if (countdownInterval) {
+					clearInterval(countdownInterval);
+					countdownInterval = null;
+				}
+				document.getElementById("countdown-display").style.display = "none";
+				document.getElementById("timer-display").style.display = "none";
+			};
+
 			// Email submission
 			const submitEmail = () => {
 				const email = document.getElementById("email-input").value.trim();
@@ -403,6 +412,7 @@
 				canDrop = data.dropping;
 
 				if (data.dropping) {
+					clearCountdownDisplay();
 					showScreen("active-screen");
 					if (!throwBallEl) spawnThrowBall();
 				} else {
@@ -420,10 +430,7 @@
 			});
 
 			socket.on("countdown:end", () => {
-				if (countdownInterval) {
-					clearInterval(countdownInterval);
-					countdownInterval = null;
-				}
+				clearCountdownDisplay();
 				canDrop = false;
 				if (throwBallEl) {
 					throwBallEl.remove();
@@ -431,6 +438,10 @@
 				}
 				showScreen("waiting-screen");
 				document.getElementById("waiting-message").textContent = "Time's up! Thanks for playing!";
+			});
+
+			socket.on("countdown:cancel", () => {
+				clearCountdownDisplay();
 			});
 
 			socket.on("user:dropped", data => {
@@ -743,6 +754,7 @@
 
 			const startCountdownDisplay = seconds => {
 				let remaining = seconds;
+				clearCountdownDisplay();
 
 				const updateDisplay = () => {
 					const minutes = Math.floor(remaining / 60);
@@ -763,16 +775,11 @@
 
 				updateDisplay();
 
-				if (countdownInterval) {
-					clearInterval(countdownInterval);
-				}
-
 				countdownInterval = setInterval(() => {
 					remaining--;
 
 					if (remaining <= 0) {
-						clearInterval(countdownInterval);
-						countdownInterval = null;
+						clearCountdownDisplay();
 					} else {
 						updateDisplay();
 					}

@@ -128,6 +128,7 @@
 			let balls = [];
 			let ballSize = 40;
 			let physicsSettings = { gravity: 1, elasticity: 0.8 };
+			let countdownInterval = null;
 
 			const { Engine, Render, Runner, Bodies, Composite, Events } = Matter;
 
@@ -227,6 +228,12 @@
 				return { radius: r, count: maxBalls };
 			};
 
+			const clearCountdownInterval = () => {
+				if (!countdownInterval) return;
+				clearInterval(countdownInterval);
+				countdownInterval = null;
+			};
+
 			// Socket events
 			socket.on("connect", () => {
 				socket.emit("display:join");
@@ -281,22 +288,28 @@
 			});
 
 			socket.on("dropping:changed", data => {
+				if (data.dropping) clearCountdownInterval();
 				document.getElementById("status").textContent = data.dropping ? "丟球中" : "目前禁止丟球";
 			});
 
 			socket.on("countdown:start", data => {
+				clearCountdownInterval();
 				let remaining = data.seconds;
 				document.getElementById("status").textContent = `倒數：${remaining} 秒`;
 
-				const interval = setInterval(() => {
+				countdownInterval = setInterval(() => {
 					remaining--;
 					if (remaining <= 0) {
-						clearInterval(interval);
+						clearCountdownInterval();
 						document.getElementById("status").textContent = "倒數結束！";
 					} else {
 						document.getElementById("status").textContent = `倒數：${remaining} 秒`;
 					}
 				}, 1000);
+			});
+
+			socket.on("countdown:cancel", () => {
+				clearCountdownInterval();
 			});
 
 			socket.on("world:reset", () => {
