@@ -320,7 +320,7 @@
 			});
 
 			socket.on("autofill:start", data => {
-				const autofillColors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#F7DC6F", "#BB8FCE", "#F8B739", "#EC7063"]; // "#58D68D",
+				const gravatarUrls = Array.isArray(data?.gravatarUrls) ? data.gravatarUrls.filter(Boolean) : [];
 				const { radius, count: targetCount } = calculateBallParams();
 				const ballsToAdd = Math.max(0, targetCount - balls.length);
 
@@ -329,7 +329,12 @@
 					return;
 				}
 
-				document.getElementById("status").textContent = `自動填充 ${ballsToAdd} 顆球...`;
+				if (gravatarUrls.length === 0) {
+					document.getElementById("status").textContent = "這回合還沒有人投球，無法自動填滿。";
+					return;
+				}
+
+				document.getElementById("status").textContent = `用本回合頭像自動填滿 ${ballsToAdd} 顆球...`;
 
 				const interval = 2000 / ballsToAdd;
 				let added = 0;
@@ -343,18 +348,19 @@
 					}
 
 					const x = Math.random() * (window.innerWidth - radius * 4) + radius * 2;
-					const color = autofillColors[Math.floor(Math.random() * autofillColors.length)];
+					const gravatarUrl = gravatarUrls[Math.floor(Math.random() * gravatarUrls.length)];
 
 					const ball = Bodies.circle(x, -50, radius, {
 						restitution: elasticity,
 						friction: 0.001,
 						density: 0.001,
 						render: {
-							fillStyle: color,
-							strokeStyle: "#fff",
-							lineWidth: 3
+							fillStyle: "transparent",
+							strokeStyle: "transparent",
+							lineWidth: 0
 						}
 					});
+					ball._gravatarUrl = gravatarUrl;
 
 					Composite.add(engine.world, ball);
 					balls.push(ball);

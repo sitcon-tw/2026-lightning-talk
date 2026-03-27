@@ -59,7 +59,7 @@ pnpm start
 ### 準備階段
 
 1. 在展示電腦上開啟 `/display.html`，投影或是輸入到 OBS。
-   * 輸入到 OBS 可以直接使用網址：`/display.html?hide=true`
+   * 輸入到 OBS 可以直接使用網址：`/display.html?hide=true&mode=1`，**OBS 不需要設定任何額外 CSS 參數，請直接清空。***（其實不清理論上沒差）*
 2. 在主持人手機或筆電開啟 `/admin.html`，以管理員密碼登入
 3. 可選：在簽到處或大螢幕角落開啟 `/welcome.html` 顯示人數
 

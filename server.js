@@ -114,6 +114,7 @@ let physicsSettings = {
 
 let userCount = 0;
 const uniqueEmails = new Set();
+const currentRoundDroppedAvatars = new Set();
 
 function broadcastUserCount() {
 	io.to("welcome").emit("users:count", { count: userCount });
@@ -122,6 +123,15 @@ function broadcastUserCount() {
 		unique: uniqueEmails.size,
 		timestamp: Date.now()
 	});
+}
+
+function resetCurrentRoundDroppedAvatars() {
+	currentRoundDroppedAvatars.clear();
+}
+
+function recordCurrentRoundDroppedAvatar(gravatarUrl) {
+	if (!gravatarUrl) return;
+	currentRoundDroppedAvatars.add(gravatarUrl);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -246,6 +256,7 @@ io.on("connection", socket => {
 			color,
 			timestamp: Date.now()
 		});
+		recordCurrentRoundDroppedAvatar(socket.data.gravatarUrl);
 
 		socket.emit("user:dropped", {
 			success: true,
@@ -264,6 +275,7 @@ io.on("connection", socket => {
 	socket.on("admin:toggleDropping", data => {
 		if (!socket.rooms.has("controllers")) return;
 		physicsSettings.dropping = !!data.dropping;
+		if (physicsSettings.dropping) resetCurrentRoundDroppedAvatars();
 		io.to("users").emit("dropping:changed", { dropping: physicsSettings.dropping });
 		io.to("display").emit("dropping:changed", { dropping: physicsSettings.dropping });
 		fastify.log.info({ dropping: physicsSettings.dropping }, "Dropping toggled");
@@ -273,6 +285,7 @@ io.on("connection", socket => {
 		if (!socket.rooms.has("controllers")) return;
 		if (typeof data.seconds !== "number" || data.seconds <= 0 || data.seconds > 3600) return;
 
+		resetCurrentRoundDroppedAvatars();
 		physicsSettings.countdownActive = true;
 		physicsSettings.countdownSeconds = data.seconds;
 
@@ -298,7 +311,9 @@ io.on("connection", socket => {
 
 	socket.on("admin:forceAutoFill", () => {
 		if (!socket.rooms.has("controllers")) return;
-		io.to("display").emit("autofill:start");
+		io.to("display").emit("autofill:start", {
+			gravatarUrls: [...currentRoundDroppedAvatars]
+		});
 		fastify.log.info("Auto-fill triggered");
 	});
 
