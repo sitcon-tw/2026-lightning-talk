@@ -1,4 +1,6 @@
-// tracing.js must be the first require so OTel patches are applied before any other module loads
+require("dotenv").config();
+
+// tracing.js must be the first require after dotenv so OTel patches are applied before any other module loads
 require("./tracing");
 
 const Fastify = require("fastify");
