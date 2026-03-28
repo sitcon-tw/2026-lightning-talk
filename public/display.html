@@ -295,15 +295,15 @@
 			socket.on("countdown:start", data => {
 				clearCountdownInterval();
 				let remaining = data.seconds;
-				document.getElementById("status").textContent = `倒數：${remaining} 秒`;
+				document.getElementById("status").textContent = `倒數：${remaining} 秒後開放投球`;
 
 				countdownInterval = setInterval(() => {
 					remaining--;
 					if (remaining <= 0) {
 						clearCountdownInterval();
-						document.getElementById("status").textContent = "倒數結束！";
+						document.getElementById("status").textContent = "倒數結束，準備開放投球...";
 					} else {
-						document.getElementById("status").textContent = `倒數：${remaining} 秒`;
+						document.getElementById("status").textContent = `倒數：${remaining} 秒後開放投球`;
 					}
 				}, 1000);
 			});

@@ -21,7 +21,8 @@
 
 			body {
 				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-				background: linear-gradient(135deg, #835403 0%, #0a0600 100%);
+				background: linear-gradient(12deg, #271803 0%, #e8a53e 54.33%, #a8762d 100%);
+				background-color: #271803;
 				min-height: 100vh;
 				display: flex;
 				justify-content: center;
@@ -497,6 +498,21 @@
 			let countdownInterval = null;
 			let autoFillTimeout = null;
 
+			const updateDroppingButton = dropping => {
+				isDropping = dropping;
+				const btn = document.getElementById("toggle-dropping");
+
+				if (isDropping) {
+					btn.textContent = "停止丟球";
+					btn.classList.remove("btn-success");
+					btn.classList.add("btn-active");
+				} else {
+					btn.textContent = "允許丟球";
+					btn.classList.remove("btn-active");
+					btn.classList.add("btn-success");
+				}
+			};
+
 			const clearCountdownInterval = () => {
 				if (!countdownInterval) return;
 				clearInterval(countdownInterval);
@@ -542,22 +558,16 @@
 			});
 
 			const toggleDropping = () => {
-				isDropping = !isDropping;
-				const btn = document.getElementById("toggle-dropping");
+				const nextDropping = !isDropping;
+				updateDroppingButton(nextDropping);
 
-				if (isDropping) {
-					btn.textContent = "停止丟球";
-					btn.classList.remove("btn-success");
-					btn.classList.add("btn-active");
+				if (nextDropping) {
 					document.getElementById("status").textContent = "丟球中";
 				} else {
-					btn.textContent = "允許丟球";
-					btn.classList.remove("btn-active");
-					btn.classList.add("btn-success");
 					document.getElementById("status").textContent = "目前禁止丟球";
 				}
 
-				socket.emit("admin:toggleDropping", { dropping: isDropping });
+				socket.emit("admin:toggleDropping", { dropping: nextDropping });
 			};
 
 			document.getElementById("toggle-dropping").addEventListener("click", toggleDropping);
@@ -568,7 +578,7 @@
 					clearCountdownInterval();
 					clearAutoFillTimeout();
 					socket.emit("admin:startCountdown", { seconds });
-					document.getElementById("status").textContent = `Countdown: ${seconds}s`;
+					document.getElementById("status").textContent = `倒數中：${seconds} 秒後開放投球`;
 				}
 			};
 
@@ -599,21 +609,18 @@
 					document.getElementById("elasticity").value = settings.elasticity;
 					document.getElementById("elasticity-value").textContent = settings.elasticity.toFixed(2);
 				}
+
+				if (settings.dropping !== undefined) {
+					updateDroppingButton(settings.dropping);
+				}
 			});
 
 			socket.on("dropping:changed", data => {
-				isDropping = data.dropping;
-				const btn = document.getElementById("toggle-dropping");
+				updateDroppingButton(data.dropping);
 
 				if (isDropping) {
-					btn.textContent = "停止丟球";
-					btn.classList.remove("btn-success");
-					btn.classList.add("btn-active");
 					document.getElementById("status").textContent = "丟球中";
 				} else {
-					btn.textContent = "允許丟球";
-					btn.classList.remove("btn-active");
-					btn.classList.add("btn-success");
 					document.getElementById("status").textContent = "目前禁止丟球";
 				}
 			});
@@ -622,15 +629,15 @@
 				clearCountdownInterval();
 				clearAutoFillTimeout();
 				let remaining = data.seconds;
-				document.getElementById("status").textContent = `Countdown: ${remaining}s`;
+				document.getElementById("status").textContent = `倒數中：${remaining} 秒後開放投球`;
 
 				countdownInterval = setInterval(() => {
 					remaining--;
 					if (remaining <= 0) {
 						clearCountdownInterval();
-						document.getElementById("status").textContent = "Countdown Ended";
+						document.getElementById("status").textContent = "倒數結束，已開放投球";
 					} else {
-						document.getElementById("status").textContent = `Countdown: ${remaining}s`;
+						document.getElementById("status").textContent = `倒數中：${remaining} 秒後開放投球`;
 					}
 				}, 1000);
 			});
@@ -638,14 +645,14 @@
 			socket.on("countdown:end", () => {
 				clearCountdownInterval();
 				clearAutoFillTimeout();
-				document.getElementById("status").textContent = "Countdown Ended";
+				document.getElementById("status").textContent = "倒數結束，已開放投球";
 
 				const autoFillDelay = parseInt(document.getElementById("autofill-seconds").value);
 				if (autoFillDelay >= 0) {
 					if (autoFillDelay === 0) {
 						socket.emit("admin:forceAutoFill");
 					} else {
-						document.getElementById("status").textContent = `Auto-fill in ${autoFillDelay}s...`;
+						document.getElementById("status").textContent = `已開放投球，${autoFillDelay} 秒後自動填滿`;
 						autoFillTimeout = setTimeout(() => {
 							autoFillTimeout = null;
 							socket.emit("admin:forceAutoFill");

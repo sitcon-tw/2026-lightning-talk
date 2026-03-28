@@ -150,6 +150,12 @@ function cancelCountdown() {
 	return true;
 }
 
+function broadcastDroppingState() {
+	io.to("controllers").emit("dropping:changed", { dropping: physicsSettings.dropping });
+	io.to("users").emit("dropping:changed", { dropping: physicsSettings.dropping });
+	io.to("display").emit("dropping:changed", { dropping: physicsSettings.dropping });
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function getGravatarUrl(email) {
@@ -293,8 +299,7 @@ io.on("connection", socket => {
 		cancelCountdown();
 		physicsSettings.dropping = !!data.dropping;
 		if (physicsSettings.dropping) resetCurrentRoundDroppedAvatars();
-		io.to("users").emit("dropping:changed", { dropping: physicsSettings.dropping });
-		io.to("display").emit("dropping:changed", { dropping: physicsSettings.dropping });
+		broadcastDroppingState();
 		fastify.log.info({ dropping: physicsSettings.dropping }, "Dropping toggled");
 	});
 
@@ -304,20 +309,21 @@ io.on("connection", socket => {
 
 		clearCountdownTimeout();
 		resetCurrentRoundDroppedAvatars();
+		physicsSettings.dropping = false;
 		physicsSettings.countdownActive = true;
 		physicsSettings.countdownSeconds = data.seconds;
 
+		broadcastDroppingState();
 		io.emit("countdown:start", { seconds: data.seconds });
 		fastify.log.info({ seconds: data.seconds }, "Countdown started");
 
 		countdownTimeout = setTimeout(() => {
 			if (physicsSettings.countdownActive) {
-				physicsSettings.dropping = false;
+				physicsSettings.dropping = true;
 				physicsSettings.countdownActive = false;
 				physicsSettings.countdownSeconds = 0;
 				countdownTimeout = null;
-				io.to("users").emit("dropping:changed", { dropping: false });
-				io.to("display").emit("dropping:changed", { dropping: false });
+				broadcastDroppingState();
 				io.emit("countdown:end");
 			}
 		}, data.seconds * 1000);
@@ -325,12 +331,18 @@ io.on("connection", socket => {
 
 	socket.on("admin:reset", () => {
 		if (!socket.rooms.has("controllers")) return;
+		cancelCountdown();
+		physicsSettings.dropping = false;
+		broadcastDroppingState();
 		io.to("display").emit("world:reset");
 		fastify.log.info("World reset triggered");
 	});
 
 	socket.on("admin:forceAutoFill", () => {
 		if (!socket.rooms.has("controllers")) return;
+		cancelCountdown();
+		physicsSettings.dropping = false;
+		broadcastDroppingState();
 		io.to("display").emit("autofill:start", {
 			gravatarUrls: [...currentRoundDroppedAvatars]
 		});

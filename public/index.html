@@ -21,8 +21,8 @@
 
 			body {
 				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-				background-color: #010121;
 				background: linear-gradient(12deg, #271803 0%, #e8a53e 54.33%, #a8762d 100%);
+				background-color: #271803;
 				min-height: 100vh;
 				min-height: 100svh;
 				display: flex;
@@ -140,7 +140,7 @@
 			}
 
 			.error {
-				color: #ff6b6b;
+				color: #b00707;
 				background: rgba(255, 255, 255, 0.2);
 				padding: 10px 20px;
 				border-radius: 8px;
@@ -421,7 +421,7 @@
 						throwBallEl.remove();
 						throwBallEl = null;
 					}
-					document.getElementById("waiting-message").textContent = "Dropping has ended. Thanks for playing!";
+					document.getElementById("waiting-message").textContent = "丟球結束！";
 				}
 			});
 
@@ -431,13 +431,7 @@
 
 			socket.on("countdown:end", () => {
 				clearCountdownDisplay();
-				canDrop = false;
-				if (throwBallEl) {
-					throwBallEl.remove();
-					throwBallEl = null;
-				}
-				showScreen("waiting-screen");
-				document.getElementById("waiting-message").textContent = "Time's up! Thanks for playing!";
+				document.getElementById("waiting-message").textContent = "已開放投球！";
 			});
 
 			socket.on("countdown:cancel", () => {
