@@ -611,11 +611,11 @@
 				// Animate ball flying up and off screen
 				let x = ballCurX;
 				let y = ballCurY;
-				const gravity = 0.08;
+				const gravity = 0.11;
 
 				// clamp horizontal, slow down vertical for ~0.8s flight
-				const launchVX = Math.max(-6, Math.min(6, vx * 0.4));
-				const launchVY = Math.max(-14, Math.min(-5, vy * 0.6));
+				const launchVX = Math.max(-9, Math.min(9, vx * 0.55));
+				const launchVY = Math.max(-20, Math.min(-7, vy * 0.85));
 
 				let animVX = launchVX;
 				let animVY = launchVY;
@@ -640,13 +640,14 @@
 
 					if (y < -150 || x < -150 || x > window.innerWidth + 150 || y > window.innerHeight + 150) {
 						flyingBall.remove();
-						// Spawn next ball rolling up from bottom after cooldown
-						rollUpBall();
 						return;
 					}
 					throwAnimId = requestAnimationFrame(animate);
 				};
 				throwAnimId = requestAnimationFrame(animate);
+
+				// Spawn next ball immediately; cooldown controls when it can be thrown
+				rollUpBall();
 			};
 
 			const snapBack = ball => {
